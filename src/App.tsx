@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Auth from './components/Auth';
 import Home from './components/Home';
 import LandingPage from './components/LandingPage';
+import InterviewPage from './components/InterviewPage';
+import InterviewSession from './components/InterviewSession';
 import './App.css';
 
 const theme = createTheme({
@@ -96,6 +98,22 @@ function App() {
               element={
                 isAuthenticated ? 
                 <Home onLogout={handleLogout} userEmail={userEmail} /> : 
+                <Navigate to="/" replace />
+              } 
+            />
+            <Route 
+              path="/interviews" 
+              element={
+                isAuthenticated ? 
+                <InterviewPage onLogout={handleLogout} /> : 
+                <Navigate to="/" replace />
+              } 
+            />
+            <Route 
+              path="/interview-session" 
+              element={
+                isAuthenticated ? 
+                <InterviewSession onLogout={handleLogout} /> : 
                 <Navigate to="/" replace />
               } 
             />

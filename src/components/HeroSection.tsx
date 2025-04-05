@@ -83,7 +83,7 @@ const HeroSection: React.FC = () => {
                   backgroundColor: '#e64a19'
                 }
               }}
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/interviews')}
             >
               Start Practice
             </Button>
