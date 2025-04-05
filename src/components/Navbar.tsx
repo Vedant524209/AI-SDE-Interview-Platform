@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PersonIcon from '@mui/icons-material/Person';
+import VideoCallIcon from '@mui/icons-material/VideoCall';
 import { Link } from 'react-router-dom';
 
 interface NavbarProps {
@@ -52,11 +53,19 @@ const Navbar: React.FC<NavbarProps> = ({ onLogout }) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
             <Button 
               color="inherit" 
+              startIcon={<VideoCallIcon />}
+              component={Link}
+              to="/interviews"
+            >
+              Mock Interviews
+            </Button>
+            <Button 
+              color="inherit" 
               startIcon={<DashboardIcon />}
               component={Link}
               to="/dashboard"
             >
-              Interview Dashboard
+              Dashboard
             </Button>
             <Button 
               color="inherit" 

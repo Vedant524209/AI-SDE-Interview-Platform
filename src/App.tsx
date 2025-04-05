@@ -4,6 +4,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Auth from './components/Auth';
 import Home from './components/Home';
 import LandingPage from './components/LandingPage';
+import InterviewPage from './components/InterviewPage';
+import InterviewSession from './components/InterviewSession';
 import './App.css';
 
 const theme = createTheme({
@@ -52,9 +54,10 @@ const theme = createTheme({
 });
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string>('');
-  const [showAuthPage, setShowAuthPage] = useState<boolean>(true);
+  // For development/testing, set isAuthenticated to true by default
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [userEmail, setUserEmail] = useState<string>('test@example.com');
+  const [showAuthPage, setShowAuthPage] = useState<boolean>(false);
 
   const handleLogin = (email: string) => {
     setIsAuthenticated(true);
@@ -98,6 +101,18 @@ function App() {
                 <Home onLogout={handleLogout} userEmail={userEmail} /> : 
                 <Navigate to="/" replace />
               } 
+            />
+            <Route 
+              path="/interviews" 
+              element={
+                isAuthenticated ? 
+                <InterviewPage onLogout={handleLogout} /> : 
+                <Navigate to="/" replace />
+              } 
+            />
+            <Route 
+              path="/interview-session" 
+              element={<InterviewSession onLogout={handleLogout} />} 
             />
             <Route 
               path="/dashboard" 
