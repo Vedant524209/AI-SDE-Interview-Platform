@@ -1,46 +1,111 @@
-# Getting Started with Create React App
+# InterviewXpert
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A web application for interview preparation with user authentication.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- User authentication (signup and login)
+- Secure password storage with bcrypt
+- MySQL database integration
+- Authentication activity logging and monitoring
+- Modern UI with Material-UI
+- Responsive design for all devices
 
-### `npm start`
+## Prerequisites
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- Node.js (v12 or higher)
+- MySQL server installed and running
+- Git
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Setup
 
-### `npm test`
+1. Clone the repository:
+```bash
+git clone https://github.com/Vedant524209/AI-SDE-Interview-Platform.git
+cd interviewxpert
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+2. Install dependencies:
+```bash
+npm install
+```
 
-### `npm run build`
+3. Set up the database:
+   - Create a MySQL database named `interviewxpert`
+   - Update the credentials in `.env` file:
+```
+DB_HOST=localhost
+DB_USER=your_mysql_username
+DB_PASSWORD=your_mysql_password
+DB_NAME=interviewxpert
+DB_PORT=3306
+PORT=5000
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+4. Run the application:
+```bash
+npm run dev
+```
+This will start both the backend server (on port 5000) and the frontend React application (on port 3000).
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Database Schema
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+The application uses the following database schema:
 
-### `npm run eject`
+**Users Table:**
+- `id`: Auto-incrementing primary key
+- `email`: User's email address (unique)
+- `password`: Hashed password
+- `created_at`: Timestamp of account creation
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+**Auth_Logs Table:**
+- `id`: Auto-incrementing primary key
+- `user_id`: Foreign key referencing users.id (can be NULL for failed logins)
+- `email`: Email address used in the authentication attempt
+- `action`: Type of action (LOGIN, SIGNUP)
+- `status`: Result of the action (SUCCESS, FAILED_VALIDATION, USER_EXISTS, INVALID_CREDENTIALS, ERROR)
+- `ip_address`: IP address of the client
+- `user_agent`: User agent string from the client
+- `created_at`: Timestamp of the log entry
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## API Endpoints
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+The backend provides the following API endpoints:
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+- `POST /api/signup`: Register a new user
+  - Body: `{ "email": "user@example.com", "password": "password123" }`
+  - Response: `{ "message": "User created successfully", "userId": 1 }`
 
-## Learn More
+- `POST /api/login`: Authenticate a user
+  - Body: `{ "email": "user@example.com", "password": "password123" }`
+  - Response: `{ "message": "Login successful", "user": { "id": 1, "email": "user@example.com" } }`
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- `GET /api/test`: Test database connection
+  - Response: `{ "message": "Database connection successful", "data": [...] }`
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- `GET /api/auth-logs`: Retrieve recent authentication logs
+  - Response: `{ "logs": [...] }`
+
+## Logging System
+
+The application includes a comprehensive logging system that tracks all authentication activities:
+
+- **Login attempts**: Both successful and failed 
+- **Signup activities**: New user registrations and duplicate attempts
+- **Security information**: IP addresses and user agents are recorded
+- **Error tracking**: All errors during authentication flow are logged
+
+This data can be used for:
+- Security monitoring and threat detection
+- Identifying suspicious login patterns
+- Troubleshooting authentication issues
+- Compliance and audit purposes
+
+## Future Enhancements
+
+- Add JWT authentication for maintaining sessions
+- Add more user profile fields
+- Implement password recovery
+- Add user roles and permissions
+- Create an admin dashboard for log analysis
+- Implement rate limiting to prevent brute force attacks

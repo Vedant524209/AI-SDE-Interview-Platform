@@ -9,6 +9,7 @@ import {
   Tab,
   Tabs,
   Alert,
+  CircularProgress,
 } from '@mui/material';
 
 interface TabPanelProps {
@@ -17,8 +18,8 @@ interface TabPanelProps {
   value: number;
 }
 
-// Simple user storage (in memory)
-const users: { [key: string]: string } = {};
+// API base URL - change this to match your server
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5002/api';
 
 function TabPanel(props: TabPanelProps) {
   const { children, value, index, ...other } = props;
@@ -41,6 +42,7 @@ const Auth = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
@@ -52,18 +54,37 @@ const Auth = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
 
     if (!email || !password) {
       setError('Please fill in all fields');
+      setLoading(false);
       return;
     }
 
-    if (users[email] === password) {
+    try {
+      const response = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
       setSuccess('Login successful!');
-      // Here you would typically redirect to the main application
-      console.log('User logged in:', email);
-    } else {
-      setError('Invalid email or password');
+      console.log('User logged in:', data.user);
+      // Here you would typically store the user info in context/state
+      // and redirect to the main application
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -71,25 +92,42 @@ const Auth = () => {
     e.preventDefault();
     setError('');
     setSuccess('');
+    setLoading(true);
 
     if (!email || !password) {
       setError('Please fill in all fields');
-      return;
-    }
-
-    if (users[email]) {
-      setError('User already exists');
+      setLoading(false);
       return;
     }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters long');
+      setLoading(false);
       return;
     }
 
-    users[email] = password;
-    setSuccess('Account created successfully!');
-    setTabValue(0); // Switch to login tab
+    try {
+      const response = await fetch(`${API_URL}/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Signup failed');
+      }
+
+      setSuccess('Account created successfully!');
+      setTabValue(0); // Switch to login tab
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'An unknown error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEmailChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -157,6 +195,7 @@ const Auth = () => {
                 autoFocus
                 value={email}
                 onChange={handleEmailChange}
+                disabled={loading}
               />
               <TextField
                 margin="normal"
@@ -169,14 +208,16 @@ const Auth = () => {
                 autoComplete="current-password"
                 value={password}
                 onChange={handlePasswordChange}
+                disabled={loading}
               />
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
+                disabled={loading}
               >
-                Sign In
+                {loading ? <CircularProgress size={24} /> : 'Sign In'}
               </Button>
             </Box>
           </TabPanel>
@@ -194,6 +235,7 @@ const Auth = () => {
                 autoFocus
                 value={email}
                 onChange={handleEmailChange}
+                disabled={loading}
               />
               <TextField
                 margin="normal"
@@ -206,14 +248,16 @@ const Auth = () => {
                 autoComplete="new-password"
                 value={password}
                 onChange={handlePasswordChange}
+                disabled={loading}
               />
               <Button
                 type="submit"
                 fullWidth
                 variant="contained"
                 sx={{ mt: 3, mb: 2 }}
+                disabled={loading}
               >
-                Sign Up
+                {loading ? <CircularProgress size={24} /> : 'Sign Up'}
               </Button>
             </Box>
           </TabPanel>
