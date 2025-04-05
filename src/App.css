@@ -40,12 +40,21 @@
 .app-container {
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Auth page background */
+.auth-page-container {
+  min-height: 100vh;
+  display: flex;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   position: relative;
   overflow: hidden;
 }
 
-.app-container::before {
+.auth-page-container::before {
   content: '';
   position: absolute;
   top: 0;
@@ -76,3 +85,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');

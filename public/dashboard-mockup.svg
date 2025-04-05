@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600">
+  <!-- Dashboard Background -->
+  <rect width="1000" height="600" rx="10" fill="#FFFFFF" />
+  
+  <!-- Header -->
+  <rect width="1000" height="60" rx="10" fill="#F8F9FA" />
+  <text x="30" y="38" font-family="Arial" font-size="20" font-weight="bold" fill="#1976D2">Dashboard</text>
+  
+  <!-- User Profile in Header -->
+  <circle cx="950" cy="30" r="20" fill="#1976D2" />
+  <text x="950" y="36" font-family="Arial" font-size="14" font-weight="bold" fill="#FFFFFF" text-anchor="middle">IX</text>
+  
+  <!-- Sidebar -->
+  <rect x="0" y="60" width="200" height="540" fill="#F8F9FA" />
+  
+  <!-- Sidebar Menu Items -->
+  <rect x="20" y="100" width="160" height="40" rx="5" fill="#E3F2FD" />
+  <text x="60" y="125" font-family="Arial" font-size="14" fill="#1976D2">Dashboard</text>
+  
+  <text x="60" y="175" font-family="Arial" font-size="14" fill="#616161">My Interviews</text>
+  <text x="60" y="225" font-family="Arial" font-size="14" fill="#616161">Mock Interviews</text>
+  <text x="60" y="275" font-family="Arial" font-size="14" fill="#616161">Analytics</text>
+  <text x="60" y="325" font-family="Arial" font-size="14" fill="#616161">Settings</text>
+  
+  <!-- Main Content -->
+  <rect x="220" y="80" width="760" height="60" rx="5" fill="#FFFFFF" />
+  <text x="240" y="120" font-family="Arial" font-size="22" font-weight="bold" fill="#212121">Good Afternoon</text>
+  
+  <!-- Stats Cards -->
+  <rect x="220" y="160" width="240" height="120" rx="8" fill="#FFFFFF" stroke="#EEEEEE" stroke-width="1" />
+  <text x="240" y="190" font-family="Arial" font-size="16" fill="#616161">Total Interviews</text>
+  <text x="240" y="230" font-family="Arial" font-size="28" font-weight="bold" fill="#212121">24</text>
+  
+  <rect x="480" y="160" width="240" height="120" rx="8" fill="#FFFFFF" stroke="#EEEEEE" stroke-width="1" />
+  <text x="500" y="190" font-family="Arial" font-size="16" fill="#616161">Success Rate</text>
+  <text x="500" y="230" font-family="Arial" font-size="28" font-weight="bold" fill="#212121">85%</text>
+  
+  <rect x="740" y="160" width="240" height="120" rx="8" fill="#FFFFFF" stroke="#EEEEEE" stroke-width="1" />
+  <text x="760" y="190" font-family="Arial" font-size="16" fill="#616161">Upcoming</text>
+  <text x="760" y="230" font-family="Arial" font-size="28" font-weight="bold" fill="#212121">3</text>
+  
+  <!-- Table -->
+  <rect x="220" y="300" width="760" height="280" rx="8" fill="#FFFFFF" stroke="#EEEEEE" stroke-width="1" />
+  <text x="240" y="340" font-family="Arial" font-size="20" font-weight="bold" fill="#212121">Recent Interviews</text>
+  
+  <!-- Table Headers -->
+  <rect x="240" y="360" width="720" height="40" rx="4" fill="#F8F9FA" />
+  <text x="260" y="385" font-family="Arial" font-size="14" font-weight="bold" fill="#616161">Company</text>
+  <text x="400" y="385" font-family="Arial" font-size="14" font-weight="bold" fill="#616161">Role</text>
+  <text x="540" y="385" font-family="Arial" font-size="14" font-weight="bold" fill="#616161">Status</text>
+  <text x="680" y="385" font-family="Arial" font-size="14" font-weight="bold" fill="#616161">Date</text>
+  <text x="820" y="385" font-family="Arial" font-size="14" font-weight="bold" fill="#616161">Score</text>
+  
+  <!-- Table Rows -->
+  <rect x="260" y="415" width="30" height="30" rx="4" fill="#E3F2FD" />
+  <text x="275" y="435" font-family="Arial" font-size="14" font-weight="bold" fill="#1976D2" text-anchor="middle">G</text>
+  <text x="310" y="435" font-family="Arial" font-size="14" fill="#212121">Google</text>
+  <text x="400" y="435" font-family="Arial" font-size="14" fill="#212121">UX Designer</text>
+  <text x="540" y="435" font-family="Arial" font-size="14" fill="#4CAF50">Completed</text>
+  <text x="680" y="435" font-family="Arial" font-size="14" fill="#616161">Sep 15, 2023</text>
+  <text x="820" y="435" font-family="Arial" font-size="14" font-weight="bold" fill="#212121">92/100</text>
+  
+  <rect x="260" y="465" width="30" height="30" rx="4" fill="#FFF8E1" />
+  <text x="275" y="485" font-family="Arial" font-size="14" font-weight="bold" fill="#FFA000" text-anchor="middle">M</text>
+  <text x="310" y="485" font-family="Arial" font-size="14" fill="#212121">Microsoft</text>
+  <text x="400" y="485" font-family="Arial" font-size="14" fill="#212121">Software Engineer</text>
+  <text x="540" y="485" font-family="Arial" font-size="14" fill="#4CAF50">Completed</text>
+  <text x="680" y="485" font-family="Arial" font-size="14" fill="#616161">Sep 10, 2023</text>
+  <text x="820" y="485" font-family="Arial" font-size="14" font-weight="bold" fill="#212121">88/100</text>
+  
+  <rect x="260" y="515" width="30" height="30" rx="4" fill="#E8F5E9" />
+  <text x="275" y="535" font-family="Arial" font-size="14" font-weight="bold" fill="#4CAF50" text-anchor="middle">F</text>
+  <text x="310" y="535" font-family="Arial" font-size="14" fill="#212121">Facebook</text>
+  <text x="400" y="535" font-family="Arial" font-size="14" fill="#212121">Product Manager</text>
+  <text x="540" y="535" font-family="Arial" font-size="14" fill="#FF9800">Scheduled</text>
+  <text x="680" y="535" font-family="Arial" font-size="14" fill="#616161">Sep 20, 2023</text>
+  <text x="820" y="535" font-family="Arial" font-size="14" font-weight="bold" fill="#212121">--</text>
+</svg> 
