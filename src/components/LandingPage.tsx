@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Container, Typography, Paper, Grid } from '@mui/material';
+import { Box, Button, Container, Typography, Paper } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import HeroSection from './HeroSection';
 
@@ -75,8 +75,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           Why InterviewXpert?
         </Typography>
         
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={4}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', marginBottom: '2rem' }}>
+          <div style={{ flex: '1 1 300px', minWidth: '300px' }}>
             <Paper 
               elevation={0} 
               sx={{ 
@@ -98,9 +98,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 Practice with our AI interviewer that provides realistic interview experiences and personalized feedback.
               </Typography>
             </Paper>
-          </Grid>
+          </div>
           
-          <Grid item xs={12} md={4}>
+          <div style={{ flex: '1 1 300px', minWidth: '300px' }}>
             <Paper 
               elevation={0} 
               sx={{ 
@@ -122,9 +122,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 Get detailed insights on your performance with video analysis, speech patterns, and answer quality metrics.
               </Typography>
             </Paper>
-          </Grid>
+          </div>
           
-          <Grid item xs={12} md={4}>
+          <div style={{ flex: '1 1 300px', minWidth: '300px' }}>
             <Paper 
               elevation={0} 
               sx={{ 
@@ -146,8 +146,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 Practice with questions tailored to your industry and role, from software engineering to product management.
               </Typography>
             </Paper>
-          </Grid>
-        </Grid>
+          </div>
+        </div>
       </Container>
 
       {/* CTA Section */}
@@ -181,8 +181,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* Footer */}
       <Box sx={{ backgroundColor: '#2a394f', color: 'white', py: 4 }}>
         <Container maxWidth="lg">
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={4}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
+            <div style={{ flex: '1 1 350px', minWidth: '250px', marginBottom: '1.5rem' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                 <Box 
                   component="img" 
@@ -197,9 +197,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
                 Helping you prepare for your next video interview with AI-powered mock interviews and feedback.
               </Typography>
-            </Grid>
+            </div>
             
-            <Grid item xs={12} md={2}>
+            <div style={{ flex: '1 1 150px', minWidth: '150px', marginBottom: '1.5rem' }}>
               <Typography variant="h6" gutterBottom>
                 Product
               </Typography>
@@ -220,9 +220,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   </Button>
                 </Box>
               </Box>
-            </Grid>
+            </div>
             
-            <Grid item xs={12} md={2}>
+            <div style={{ flex: '1 1 150px', minWidth: '150px', marginBottom: '1.5rem' }}>
               <Typography variant="h6" gutterBottom>
                 Company
               </Typography>
@@ -243,9 +243,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   </Button>
                 </Box>
               </Box>
-            </Grid>
+            </div>
             
-            <Grid item xs={12} md={4}>
+            <div style={{ flex: '1 1 350px', minWidth: '250px', marginBottom: '1.5rem' }}>
               <Typography variant="h6" gutterBottom>
                 Subscribe to our newsletter
               </Typography>
@@ -274,8 +274,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   </Button>
                 </Paper>
               </Box>
-            </Grid>
-          </Grid>
+            </div>
+          </div>
           
           <Box sx={{ pt: 4, mt: 4, borderTop: '1px solid rgba(255, 255, 255, 0.1)', textAlign: 'center' }}>
             <Typography variant="body2" sx={{ opacity: 0.6 }}>

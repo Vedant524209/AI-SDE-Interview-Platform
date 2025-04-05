@@ -37,7 +37,7 @@ const HeroSection: React.FC = () => {
             textAlign: 'center',
             position: 'relative',
             zIndex: 1,
-            mb: 8
+            mb: 4
           }}
         >
           <Typography
@@ -50,7 +50,7 @@ const HeroSection: React.FC = () => {
               fontSize: { xs: '2.2rem', sm: '3rem', md: '3.5rem' }
             }}
           >
-            Get video-interview-ready with InterviewXpert
+            Welcome to InterviewXpert
           </Typography>
 
           <Typography
@@ -64,7 +64,7 @@ const HeroSection: React.FC = () => {
               lineHeight: 1.5
             }}
           >
-            Be confident when you face your next virtual interview. Try our video assessments for mock and pre-interviews.
+            Your preparation for technical interviews starts here. Get ready to excel in your next interview with our comprehensive platform.
           </Typography>
 
           <Stack 
@@ -83,9 +83,9 @@ const HeroSection: React.FC = () => {
                   backgroundColor: '#e64a19'
                 }
               }}
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/dashboard')}
             >
-              Sign up for free
+              Start Practice
             </Button>
             
             <Button
@@ -102,34 +102,11 @@ const HeroSection: React.FC = () => {
                   backgroundColor: 'rgba(84, 110, 122, 0.04)'
                 }
               }}
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/profile')}
             >
-              Try mock interviews
+              View Profile
             </Button>
           </Stack>
-        </Box>
-
-        {/* Dashboard image */}
-        <Box
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            position: 'relative',
-            zIndex: 1
-          }}
-        >
-          <Box
-            component="img"
-            src="/dashboard-mockup.png"
-            alt="InterviewXpert Dashboard"
-            sx={{
-              width: '100%',
-              maxWidth: '1000px',
-              borderRadius: '8px',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)'
-            }}
-          />
         </Box>
       </Container>
     </Box>

@@ -236,6 +236,15 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
                 >
                   {loading ? <CircularProgress size={24} /> : 'Sign In'}
                 </Button>
+                <Button
+                  onClick={handleDemoLogin}
+                  fullWidth
+                  variant="outlined"
+                  sx={{ mb: 2 }}
+                  disabled={loading}
+                >
+                  Demo Login (Skip Authentication)
+                </Button>
               </Box>
             </TabPanel>
 
@@ -279,18 +288,6 @@ const Auth: React.FC<AuthProps> = ({ onLoginSuccess }) => {
               </Box>
             </TabPanel>
           </Paper>
-        </Box>
-
-        {/* Add a demo login button at the bottom for testing */}
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Button 
-            variant="text" 
-            color="primary" 
-            onClick={handleDemoLogin}
-            sx={{ fontSize: '0.8rem' }}
-          >
-            Demo Login (Skip Authentication)
-          </Button>
         </Box>
       </Container>
     </div>

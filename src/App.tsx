@@ -54,7 +54,7 @@ const theme = createTheme({
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [userEmail, setUserEmail] = useState<string>('');
-  const [showAuthPage, setShowAuthPage] = useState<boolean>(false);
+  const [showAuthPage, setShowAuthPage] = useState<boolean>(true);
 
   const handleLogin = (email: string) => {
     setIsAuthenticated(true);
@@ -64,6 +64,7 @@ function App() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setUserEmail('');
+    setShowAuthPage(true);
   };
   
   const handleShowAuth = () => {
@@ -80,13 +81,15 @@ function App() {
               path="/" 
               element={
                 isAuthenticated ? (
-                  <Navigate to="/home" replace />
-                ) : showAuthPage ? (
-                  <Auth onLoginSuccess={handleLogin} />
+                  <Home onLogout={handleLogout} userEmail={userEmail} />
                 ) : (
-                  <LandingPage onLogin={handleShowAuth} />
+                  <Auth onLoginSuccess={handleLogin} />
                 )
               } 
+            />
+            <Route 
+              path="/landing" 
+              element={<LandingPage onLogin={handleShowAuth} />} 
             />
             <Route 
               path="/home" 
