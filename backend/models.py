@@ -12,5 +12,6 @@ class QuestionTable(Base):
     example = Column(JSON, nullable=True)
     constraints = Column(JSON)
     topics = Column(JSON)
+    test_cases = Column(JSON, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now()) 

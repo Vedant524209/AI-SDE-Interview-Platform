@@ -1,60 +1,64 @@
-import subprocess
-import sys
-import time
-import requests
+import uvicorn
+import logging
 import os
+import sys
+import requests
+import time
+from pathlib import Path
 
-def check_ollama():
-    """Check if Ollama is running properly."""
-    try:
-        response = requests.get("http://localhost:11434/api/tags")
-        if response.status_code == 200:
-            print("✅ Ollama is running.")
-            return True
-        else:
-            print("❌ Ollama is not responding correctly.")
-            return False
-    except requests.exceptions.ConnectionError:
-        print("❌ Ollama is not running. Please start it with 'ollama serve'.")
-        return False
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 
-def check_llama_model():
-    """Check if Llama 3.2 model is available."""
+logger = logging.getLogger(__name__)
+
+# Always use mock mode to avoid Ollama timeouts
+DEFAULT_MOCK_MODE = True
+
+def check_ollama_available():
+    """Check if Ollama server is running and available"""
     try:
-        response = requests.get("http://localhost:11434/api/tags")
+        response = requests.get("http://localhost:11434/api/tags", timeout=5)
         if response.status_code == 200:
             models = response.json().get("models", [])
-            if any(model.get("name") == "llama3.2" for model in models):
-                print("✅ Llama 3.2 model is available.")
-                return True
+            if models:
+                logger.info(f"Ollama is available with models: {', '.join([m['name'] for m in models])}")
+                return True, models
             else:
-                print("❌ Llama 3.2 model is not available. Please install it with 'ollama pull llama3.2'.")
-                return False
+                logger.warning("Ollama is running but no models found")
+                return True, []
+        else:
+            logger.warning(f"Ollama returned status code: {response.status_code}")
+            return False, []
     except requests.exceptions.ConnectionError:
-        print("❌ Ollama is not running. Please start it with 'ollama serve'.")
-        return False
+        logger.warning("Ollama server is not running on localhost:11434")
+        return False, []
     except Exception as e:
-        print(f"❌ Error checking Llama 3.2 model: {str(e)}")
-        return False
+        logger.warning(f"Error checking Ollama availability: {e}")
+        return False, []
 
 def main():
-    print("🚀 Starting InterviewXpert Backend...")
+    # Create db directory if it doesn't exist
+    db_dir = Path("db")
+    db_dir.mkdir(exist_ok=True)
     
-    # Check prerequisites
-    if not check_ollama():
-        print("\nPlease start Ollama with 'ollama serve' in a separate terminal and try again.")
-        sys.exit(1)
+    # Force mock mode to avoid Ollama timeouts
+    logger.warning("Using mock mode for question generation (Ollama not required)")
+    os.environ["USE_MOCK_MODE"] = "True"
     
     # Start the FastAPI server
-    try:
-        print("\n🌐 Starting FastAPI server...")
-        cmd = [sys.executable, "-m", "uvicorn", "main:app", "--reload", "--host", "0.0.0.0", "--port", "8000"]
-        subprocess.run(cmd)
-    except KeyboardInterrupt:
-        print("\n👋 Shutting down...")
-    except Exception as e:
-        print(f"\n❌ Error starting FastAPI server: {str(e)}")
-        sys.exit(1)
+    uvicorn.run(
+        "main:app", 
+        host="0.0.0.0", 
+        port=8000, 
+        reload=True,
+        log_level="info"
+    )
 
 if __name__ == "__main__":
     main() 

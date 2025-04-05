@@ -1,22 +1,82 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Paper, Typography, Button, Select, MenuItem, FormControl, InputLabel, Stack } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import SendIcon from '@mui/icons-material/Send';
+
+const languageTemplates = {
+  javascript: `// Write your JavaScript solution here
+
+function solution(nums, target) {
+  // Your implementation
+  
+  return result;
+}
+
+// Example usage:
+// solution([2,7,11,15], 9);
+`,
+  python: `# Write your Python solution here
+
+def solution(nums, target):
+    # Your implementation
+    
+    return result
+
+# Example usage:
+# solution([2,7,11,15], 9)
+`,
+  java: `// Write your Java solution here
+
+class Solution {
+    public int[] solution(int[] nums, int target) {
+        // Your implementation
+        
+        return result;
+    }
+}
+
+// Example usage:
+// new Solution().solution(new int[]{2,7,11,15}, 9);
+`,
+  cpp: `// Write your C++ solution here
+
+#include <vector>
+using namespace std;
+
+vector<int> solution(vector<int>& nums, int target) {
+    // Your implementation
+    
+    return result;
+}
+
+// Example usage:
+// vector<int> nums = {2,7,11,15};
+// solution(nums, 9);
+`
+};
 
 interface CodeEditorProps {
   initialCode?: string;
   questionTitle?: string;
-  onRun?: (code: string) => void;
-  onSubmit?: (code: string) => void;
+  onRun?: (code: string, language: string) => void;
+  onSubmit?: (code: string, language: string) => void;
 }
 
 const CodeEditor: React.FC<CodeEditorProps> = ({
-  initialCode = "// Write your code here\n\nfunction solution() {\n  // Your implementation\n  \n  return result;\n}\n",
+  initialCode,
   questionTitle = "Coding Question",
   onRun,
   onSubmit
 }) => {
-  const [code, setCode] = useState<string>(initialCode);
   const [language, setLanguage] = useState<string>('javascript');
+  const [code, setCode] = useState<string>(initialCode || languageTemplates.javascript);
+
+  // Update code when language changes
+  useEffect(() => {
+    if (!initialCode) {
+      setCode(languageTemplates[language as keyof typeof languageTemplates]);
+    }
+  }, [language, initialCode]);
 
   const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setCode(e.target.value);
@@ -28,17 +88,17 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
   const handleRun = () => {
     if (onRun) {
-      onRun(code);
+      onRun(code, language);
     } else {
-      console.log('Running code:', code);
+      console.log('Running code:', code, 'Language:', language);
     }
   };
 
   const handleSubmit = () => {
     if (onSubmit) {
-      onSubmit(code);
+      onSubmit(code, language);
     } else {
-      console.log('Submitting code:', code);
+      console.log('Submitting code:', code, 'Language:', language);
     }
   };
 
@@ -119,6 +179,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
         <Button
           variant="contained"
           color="primary"
+          endIcon={<SendIcon />}
           onClick={handleSubmit}
         >
           Submit

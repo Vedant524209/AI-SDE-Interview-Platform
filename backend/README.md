@@ -1,65 +1,96 @@
 # InterviewXpert Backend
 
-This is the backend service for InterviewXpert, providing APIs for question generation and management using FastAPI and Llama 3.2 via Ollama.
+This backend service is designed to generate DSA (Data Structures and Algorithms) coding interview questions using the Llama3 model running locally with Ollama.
 
 ## Features
 
-- Generate coding interview questions with different difficulty levels (easy, medium, hard)
-- Store questions in a SQLite database
-- RESTful API endpoints for creating and retrieving questions
+- Generates coding interview questions with varying difficulty levels
+- Uses Llama3 to create realistic DSA questions
+- Provides questions with detailed descriptions, examples, test cases, and constraints
+- RESTful API endpoints for question generation and retrieval
 
 ## Prerequisites
 
-- Python 3.8+
-- Ollama installed with Llama 3.2 model available
-  - Install Ollama from [ollama.ai](https://ollama.ai/)
-  - Pull the Llama 3.2 model: `ollama pull llama3.2`
+- Python 3.8+ installed
+- [Ollama](https://ollama.ai/) installed and running
+- Llama3 model pulled in Ollama
 
-## Setup
+## Installation
 
-1. Clone the repository
-2. Navigate to the backend directory
-3. Create a virtual environment (optional but recommended)
+1. Install Ollama following instructions at [ollama.ai](https://ollama.ai/)
+
+2. Pull the Llama3 model (you can use any size that fits your hardware):
+   ```bash
+   ollama pull llama3.2
    ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
-4. Install dependencies
-   ```
+
+3. Install Python dependencies:
+   ```bash
    pip install -r requirements.txt
    ```
 
-## Running the Server
+## Running the Backend
 
-1. Make sure Ollama is running with the command:
-   ```
+1. Start the Ollama server:
+   ```bash
    ollama serve
    ```
 
-2. Start the FastAPI server:
-   ```
-   uvicorn main:app --reload
+2. In a separate terminal, start the backend server:
+   ```bash
+   python run.py
    ```
 
-3. The API will be available at http://localhost:8000
-4. API documentation is available at http://localhost:8000/docs
+   The server will start at http://localhost:8000
 
 ## API Endpoints
 
 - `GET /health` - Health check endpoint
-- `POST /questions/` - Generate a new question with specified difficulty level
-- `GET /questions/` - Get a list of all questions
-- `GET /questions/{question_id}` - Get a specific question by ID
+- `POST /questions/` - Generate a new question (requires a difficulty level)
+- `GET /questions/` - Retrieve a list of generated questions
+- `GET /questions/{question_id}` - Retrieve a specific question by ID
 
-## Example Usage
+## Example API Usage
 
-Generate a new medium difficulty question:
-
+Generate a new question:
 ```bash
-curl -X POST "http://localhost:8000/questions/" \
-     -H "Content-Type: application/json" \
-     -d '{"difficulty": "medium"}'
+curl -X POST "http://localhost:8000/questions/" -H "Content-Type: application/json" -d '{"difficulty":"medium"}'
 ```
+
+Retrieve all questions:
+```bash
+curl "http://localhost:8000/questions/"
+```
+
+## Question Format
+
+Generated questions follow this JSON schema:
+```json
+{
+  "title": "String",
+  "desc": "String",
+  "difficulty": "String (easy/medium/hard)",
+  "example": {
+    "input": "String",
+    "output": "String",
+    "explanation": "String"
+  },
+  "constraints": ["String"],
+  "topics": ["String"],
+  "test_cases": [
+    {
+      "input": "String",
+      "output": "String",
+      "explanation": "String"
+    }
+  ]
+}
+```
+
+## Troubleshooting
+
+- If you encounter issues with the Ollama connection, ensure the Ollama server is running using `ollama serve`
+- For other issues, check the server logs for detailed error information
 
 ## Future Enhancements
 

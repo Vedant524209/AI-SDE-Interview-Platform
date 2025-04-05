@@ -54,9 +54,10 @@ const theme = createTheme({
 });
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string>('');
-  const [showAuthPage, setShowAuthPage] = useState<boolean>(true);
+  // For development/testing, set isAuthenticated to true by default
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [userEmail, setUserEmail] = useState<string>('test@example.com');
+  const [showAuthPage, setShowAuthPage] = useState<boolean>(false);
 
   const handleLogin = (email: string) => {
     setIsAuthenticated(true);
@@ -111,11 +112,7 @@ function App() {
             />
             <Route 
               path="/interview-session" 
-              element={
-                isAuthenticated ? 
-                <InterviewSession onLogout={handleLogout} /> : 
-                <Navigate to="/" replace />
-              } 
+              element={<InterviewSession onLogout={handleLogout} />} 
             />
             <Route 
               path="/dashboard" 

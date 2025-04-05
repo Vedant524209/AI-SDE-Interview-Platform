@@ -1,111 +1,106 @@
-# InterviewXpert
+# InterviewXpert - AI Interview Practice Platform
 
-A web application for interview preparation with user authentication.
+InterviewXpert is an AI-powered platform for practicing technical coding interviews. It generates data structure and algorithm questions, allows you to write code solutions, and evaluates your answers.
+
+## Project Structure
+
+```
+interviewxpert/
+├── backend/           # Python FastAPI backend
+│   ├── db/            # Database files
+│   ├── models.py      # Database models
+│   ├── schemas.py     # Pydantic schemas
+│   ├── services.py    # Business logic and LLM integration
+│   ├── main.py        # API endpoints
+│   └── run.py         # Server startup script
+├── src/               # React frontend
+│   ├── components/    # React components
+│   ├── services/      # API service layers
+│   └── App.tsx        # Main application component
+└── public/            # Static assets
+```
+
+## Starting the Application (Easy Way)
+
+We've created a PowerShell script that starts both frontend and backend servers in separate windows:
+
+```powershell
+# Run the all-in-one starter script
+cd interviewxpert
+.\startAll.ps1
+```
+
+## Starting the Application (Windows PowerShell)
+
+If you prefer to start servers manually:
+
+```powershell
+# First, start the backend
+cd interviewxpert\backend
+python run.py
+```
+
+Open a new PowerShell window:
+
+```powershell
+# Then start the frontend in a new window
+cd interviewxpert
+npm start
+```
+
+## Starting the Application (Command Prompt)
+
+Using Windows Command Prompt:
+
+```cmd
+cd interviewxpert\backend
+python run.py
+```
+
+Open a new Command Prompt window:
+
+```cmd
+cd interviewxpert
+npm start
+```
+
+## Application URLs
+
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Documentation: http://localhost:8000/docs
 
 ## Features
 
-- User authentication (signup and login)
-- Secure password storage with bcrypt
-- MySQL database integration
-- Authentication activity logging and monitoring
-- Modern UI with Material-UI
-- Responsive design for all devices
+- Generate coding interview questions of varying difficulties
+- Code editor with multiple language support
+- Test your code against the provided examples
+- Get detailed feedback on your solution
+- Track your performance across multiple interviews
+- **NEW! Emotion Analysis** - Real-time tracking of your emotional state during interviews
+  - Measures confidence and engagement levels
+  - Provides visual feedback through webcam
+  - Helps improve your interview performance by monitoring your demeanor
 
-## Prerequisites
+## Emotion Analysis
 
-- Node.js (v12 or higher)
-- MySQL server installed and running
-- Git
+The emotion analysis feature captures your facial expressions through your webcam and analyzes them to provide real-time feedback on:
 
-## Setup
+- Confidence level
+- Engagement level
+- Overall emotional state
 
-1. Clone the repository:
-```bash
-git clone https://github.com/Vedant524209/AI-SDE-Interview-Platform.git
-cd interviewxpert
-```
+This helps you understand how you appear to interviewers and improve your non-verbal communication during technical interviews. To use this feature:
 
-2. Install dependencies:
-```bash
-npm install
-```
+1. Grant camera permissions when prompted
+2. Position yourself clearly in the camera view
+3. The emotion analysis panel will display your current emotional state
 
-3. Set up the database:
-   - Create a MySQL database named `interviewxpert`
-   - Update the credentials in `.env` file:
-```
-DB_HOST=localhost
-DB_USER=your_mysql_username
-DB_PASSWORD=your_mysql_password
-DB_NAME=interviewxpert
-DB_PORT=3306
-PORT=5000
-```
+## Mock Mode
 
-4. Run the application:
-```bash
-npm run dev
-```
-This will start both the backend server (on port 5000) and the frontend React application (on port 3000).
+The application uses mock mode by default, which means it doesn't require the Ollama LLM to be running. This provides a consistent experience with predefined questions.
 
-## Database Schema
+## Notes
 
-The application uses the following database schema:
-
-**Users Table:**
-- `id`: Auto-incrementing primary key
-- `email`: User's email address (unique)
-- `password`: Hashed password
-- `created_at`: Timestamp of account creation
-
-**Auth_Logs Table:**
-- `id`: Auto-incrementing primary key
-- `user_id`: Foreign key referencing users.id (can be NULL for failed logins)
-- `email`: Email address used in the authentication attempt
-- `action`: Type of action (LOGIN, SIGNUP)
-- `status`: Result of the action (SUCCESS, FAILED_VALIDATION, USER_EXISTS, INVALID_CREDENTIALS, ERROR)
-- `ip_address`: IP address of the client
-- `user_agent`: User agent string from the client
-- `created_at`: Timestamp of the log entry
-
-## API Endpoints
-
-The backend provides the following API endpoints:
-
-- `POST /api/signup`: Register a new user
-  - Body: `{ "email": "user@example.com", "password": "password123" }`
-  - Response: `{ "message": "User created successfully", "userId": 1 }`
-
-- `POST /api/login`: Authenticate a user
-  - Body: `{ "email": "user@example.com", "password": "password123" }`
-  - Response: `{ "message": "Login successful", "user": { "id": 1, "email": "user@example.com" } }`
-
-- `GET /api/test`: Test database connection
-  - Response: `{ "message": "Database connection successful", "data": [...] }`
-
-- `GET /api/auth-logs`: Retrieve recent authentication logs
-  - Response: `{ "logs": [...] }`
-
-## Logging System
-
-The application includes a comprehensive logging system that tracks all authentication activities:
-
-- **Login attempts**: Both successful and failed 
-- **Signup activities**: New user registrations and duplicate attempts
-- **Security information**: IP addresses and user agents are recorded
-- **Error tracking**: All errors during authentication flow are logged
-
-This data can be used for:
-- Security monitoring and threat detection
-- Identifying suspicious login patterns
-- Troubleshooting authentication issues
-- Compliance and audit purposes
-
-## Future Enhancements
-
-- Add JWT authentication for maintaining sessions
-- Add more user profile fields
-- Implement password recovery
-- Add user roles and permissions
-- Create an admin dashboard for log analysis
-- Implement rate limiting to prevent brute force attacks
+- The backend automatically creates a SQLite database in the `db` directory
+- The application doesn't require authentication for development purposes
