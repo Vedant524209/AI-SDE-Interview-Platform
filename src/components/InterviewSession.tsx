@@ -49,7 +49,13 @@ const mockQuestion: Question = {
       output: "[0,1]",
       explanation: "nums[0] + nums[1] = 3 + 3 = 6"
     }
-  ]
+  ],
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  attention_level: 0.8,
+  positivity_level: 0.7,
+  arousal_level: 0.6,
+  dominant_emotion: "neutral"
 };
 
 // Function to extract query parameters from URL

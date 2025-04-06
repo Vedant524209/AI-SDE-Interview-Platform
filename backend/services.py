@@ -6,6 +6,9 @@ import requests
 import time
 import random
 import re
+import cv2
+import base64
+import numpy as np
 from typing import Dict, List, Any, Optional
 
 # Configure logging
@@ -23,16 +26,15 @@ logger = logging.getLogger(__name__)
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_API_URL = f"{OLLAMA_URL}"
 MODEL_NAME = os.environ.get("OLLAMA_MODEL_NAME", "llama3")
-USE_MOCK_MODE = os.environ.get("USE_MOCK_MODE", "True").lower() == "true"
+MOCK_MODE = os.environ.get("MOCK_MODE", "false").lower() == "true"
 
-if USE_MOCK_MODE:
+if MOCK_MODE:
     logger.info("Mock mode is enabled - using predefined questions")
 else:
     logger.info(f"Using Ollama with model: {MODEL_NAME}")
 
 # Ollama API configuration
 OLLAMA_TIMEOUT = int(os.environ.get("OLLAMA_TIMEOUT", "120"))  # seconds
-MOCK_MODE = os.environ.get("MOCK_MODE", "false").lower() == "true"
 
 # Sample questions for mock mode
 MOCK_QUESTIONS = [
@@ -177,6 +179,9 @@ MOCK_QUESTIONS = [
         ]
     }
 ]
+
+# Cache for Haarcascade file
+face_cascade = None
 
 def check_ollama_server() -> bool:
     """Check if Ollama server is available"""
@@ -595,3 +600,67 @@ def evaluate_code_submission(code: str, language: str, question) -> dict:
         "time_complexity": time_complexity,
         "space_complexity": space_complexity
     } 
+
+def analyze_facial_expression(image_data: str) -> Dict[str, Any]:
+    """
+    Analyze facial expression from base64 encoded image
+    Returns confidence, engagement, and dominant emotion
+    """
+    global face_cascade
+    
+    try:
+        # Initialize face detection if not already done
+        if face_cascade is None:
+            face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        
+        # Convert base64 to image
+        img_data = base64.b64decode(image_data.split(',')[1])
+        nparr = np.frombuffer(img_data, np.uint8)
+        img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+        
+        # Convert to grayscale for face detection
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        
+        # Detect faces
+        faces = face_cascade.detectMultiScale(gray, 1.1, 4)
+        
+        # If no face is detected, return default values
+        if len(faces) == 0:
+            return {
+                "attention_level": 0.5,
+                "positivity_level": 0.5,
+                "arousal_level": 0.5,
+                "dominant_emotion": "neutral",
+                "face_detected": False
+            }
+        
+        # For demo purposes, generate random emotion metrics
+        # In a real implementation, we would use a proper ML model here
+        attention = random.uniform(0.7, 1.0)
+        positivity = random.uniform(0.6, 0.9)
+        arousal = random.uniform(0.65, 0.95)
+        
+        # Select a dominant emotion based on positivity and arousal
+        emotions = ["happy", "confident", "neutral", "uncomfortable"]
+        weights = [0.4, 0.3, 0.2, 0.1]  # Bias toward positive emotions for demo
+        dominant_emotion = random.choices(emotions, weights=weights, k=1)[0]
+        
+        return {
+            "attention_level": attention,
+            "positivity_level": positivity,
+            "arousal_level": arousal,
+            "dominant_emotion": dominant_emotion,
+            "face_detected": True
+        }
+        
+    except Exception as e:
+        logger.error(f"Error analyzing facial expression: {str(e)}")
+        # Return default values on error
+        return {
+            "attention_level": 0.5,
+            "positivity_level": 0.5,
+            "arousal_level": 0.5,
+            "dominant_emotion": "neutral",
+            "face_detected": False,
+            "error": str(e)
+        } 
