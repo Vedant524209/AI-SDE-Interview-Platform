@@ -16,7 +16,7 @@ export interface TestCase {
 export interface Example {
   input: string;
   output: string;
-  explanation: string;
+  explanation?: string;
 }
 
 export interface Question {
@@ -28,39 +28,63 @@ export interface Question {
   constraints: string[];
   topics: string[];
   test_cases: TestCase[];
+  created_at: string;
+  updated_at?: string;
+  attention_level?: number;
+  positivity_level?: number;
+  arousal_level?: number;
+  dominant_emotion?: string;
 }
 
 export interface CodeSubmission {
   code: string;
-  language: string;
+  language?: string;
 }
 
 export interface TestCaseResult {
-  test_case: TestCase;
   passed: boolean;
+  test_case: TestCase;
   actual_output: string;
+  execution_time: number;
   error_message?: string;
-  execution_time?: number;
 }
 
 export interface TestResult {
   passed: boolean;
-  total_test_cases: number;
   passed_test_cases: number;
+  total_test_cases: number;
   results: TestCaseResult[];
-  overall_execution_time: number;
   feedback: string;
   time_complexity: string;
   space_complexity: string;
 }
 
+export interface EmotionAnalysisResult {
+  attention_level: number;
+  positivity_level: number;
+  arousal_level: number;
+  dominant_emotion: string;
+  face_detected: boolean;
+  error?: string;
+}
+
+export interface UserState {
+  attention_level: number;
+  positivity_level: number;
+  arousal_level: number;
+  dominant_emotion: 'happy' | 'confident' | 'neutral' | 'uncomfortable';
+}
+
 // API service functions
 export const questionApi = {
   // Generate a new question with specified difficulty
-  generateQuestion: async (difficulty: string): Promise<Question> => {
+  generateQuestion: async (difficulty: string, userState?: UserState): Promise<Question> => {
     try {
       console.log('Sending request to generate new question with difficulty:', difficulty);
-      const response = await api.post('/questions/', { difficulty });
+      const response = await api.post('/questions/', {
+        difficulty,
+        user_state: userState
+      });
       console.log('Question generated successfully:', response.data);
       return response.data;
     } catch (error) {
@@ -108,6 +132,34 @@ export const questionApi = {
       return response.data;
     } catch (error) {
       console.error('Failed to test code:', error);
+      throw error;
+    }
+  },
+
+  // Analyze emotion from an image
+  analyzeEmotion: async (imageData: string): Promise<EmotionAnalysisResult> => {
+    try {
+      console.log('Sending request to analyze emotion');
+      const response = await api.post('/analyze-emotion/', {
+        image: imageData
+      });
+      console.log('Emotion analysis results:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to analyze emotion:', error);
+      throw error;
+    }
+  },
+
+  // Log user state
+  logUserState: async (userState: UserState): Promise<{ message: string; id: number }> => {
+    try {
+      console.log('Sending request to log user state');
+      const response = await api.post('/user-state/', userState);
+      console.log('User state logged successfully:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to log user state:', error);
       throw error;
     }
   },
