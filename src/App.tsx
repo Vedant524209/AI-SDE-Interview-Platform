@@ -6,6 +6,7 @@ import Home from './components/Home';
 import LandingPage from './components/LandingPage';
 import InterviewPage from './components/InterviewPage';
 import InterviewSession from './components/InterviewSession';
+import SessionReport from './components/SessionReport';
 import './App.css';
 
 const theme = createTheme({
@@ -113,6 +114,14 @@ function App() {
             <Route 
               path="/interview-session" 
               element={<InterviewSession onLogout={handleLogout} />} 
+            />
+            <Route 
+              path="/report/:sessionId" 
+              element={
+                isAuthenticated ? 
+                <SessionReport onLogout={handleLogout} /> : 
+                <Navigate to="/" replace />
+              } 
             />
             <Route 
               path="/dashboard" 

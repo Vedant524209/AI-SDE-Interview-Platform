@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, Container, Typography, Paper, Divider, Chip, Button, CircularProgress, Accordion, AccordionSummary, AccordionDetails, Alert } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TimerIcon from '@mui/icons-material/Timer';
@@ -7,7 +7,8 @@ import CodeEditor from './CodeEditor';
 import Navbar from './Navbar';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EmotionAnalysis from './EmotionAnalysis';
-import { questionApi, Question, TestCase, Example } from '../services/api';
+import { questionApi, Question, TestCase, Example, sessionApi, TestResult } from '../services/api';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
 interface InterviewSessionProps {
   onLogout: () => void;
@@ -77,6 +78,35 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
   const [fetchingQuestion, setFetchingQuestion] = useState<boolean>(true);
   const [initialCode, setInitialCode] = useState<string>("");
   const [emotionData, setEmotionData] = useState<any>(null);
+  const [currentCode, setCurrentCode] = useState<string>("");
+  const [currentLanguage, setCurrentLanguage] = useState<string>("javascript");
+  
+  // Session tracking
+  const [sessionId, setSessionId] = useState<number | null>(null);
+  const [sessionQuestionId, setSessionQuestionId] = useState<number | null>(null);
+  const [testResults, setTestResults] = useState<TestResult | null>(null);
+  const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
+  const [showNextButton, setShowNextButton] = useState<boolean>(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Create a new session when component mounts
+  useEffect(() => {
+    const createNewSession = async () => {
+      try {
+        const session = await sessionApi.createSession(
+          undefined, // No user ID for now
+          `Interview Session - ${new Date().toLocaleString()}`
+        );
+        setSessionId(session.id);
+        console.log('Created new interview session:', session.id);
+      } catch (error) {
+        console.error('Failed to create session:', error);
+      }
+    };
+    
+    createNewSession();
+  }, []);
 
   // Fetch question from backend based on questionId if available
   useEffect(() => {
@@ -100,12 +130,48 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
     });
   }, [questionId]);
   
-  // Log when the component state changes
+  // Track emotion data
   useEffect(() => {
-    console.log('fetchingQuestion:', fetchingQuestion);
-    console.log('question:', question);
-    console.log('fetchError:', fetchError);
-  }, [fetchingQuestion, question, fetchError]);
+    if (sessionId && emotionData) {
+      const trackEmotionData = async () => {
+        try {
+          await sessionApi.addEmotionSnapshot(sessionId, {
+            attention_level: emotionData.attention_level,
+            positivity_level: emotionData.positivity_level,
+            arousal_level: emotionData.arousal_level,
+            dominant_emotion: emotionData.dominant_emotion,
+            face_detected: true,
+            question_id: question?.id
+          });
+          console.log('Emotion data tracked in session');
+        } catch (error) {
+          console.error('Failed to track emotion data:', error);
+        }
+      };
+      
+      trackEmotionData();
+    }
+  }, [emotionData, sessionId, question?.id]);
+  
+  // When a question is loaded, add it to the session
+  useEffect(() => {
+    if (sessionId && question) {
+      const addQuestionToSession = async () => {
+        try {
+          const sessionQuestion = await sessionApi.addQuestionToSession(
+            sessionId,
+            question.id
+          );
+          setSessionQuestionId(sessionQuestion.id);
+          console.log('Added question to session:', sessionQuestion);
+        } catch (error) {
+          console.error('Failed to add question to session:', error);
+        }
+      };
+      
+      addQuestionToSession();
+    }
+  }, [sessionId, question]);
 
   // Handle timer countdown
   useEffect(() => {
@@ -129,6 +195,29 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Enter or Cmd+Enter to run tests
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        console.log("Keyboard shortcut detected: Run Tests (Ctrl+Enter)");
+        handleRunTest();
+      }
+      // Ctrl+Shift+Enter or Cmd+Shift+Enter to submit
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        console.log("Keyboard shortcut detected: Submit (Ctrl+Shift+Enter)");
+        handleSubmit();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [currentCode, question]);
+
   // Create template code based on the question title
   useEffect(() => {
     if (question) {
@@ -137,7 +226,12 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
       if (title.includes('two sum')) {
         setInitialCode(`// Two Sum solution
 function twoSum(nums, target) {
-  // Your solution here
+  // Your implementation here
+  
+  // Example test:
+  // Input: nums = [2,7,11,15], target = 9
+  // Output: [0,1]
+  
   const map = new Map();
   
   for (let i = 0; i < nums.length; i++) {
@@ -153,16 +247,32 @@ function twoSum(nums, target) {
       } else if (title.includes('palindrome')) {
         setInitialCode(`// Palindrome solution
 function isPalindrome(s) {
-  // Your solution here
+  // Your implementation here
   
+  // Example:
+  // Input: s = "A man, a plan, a canal: Panama"
+  // Output: true
+  
+  // Clean string - remove non-alphanumeric and convert to lowercase
+  const cleanStr = s.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  
+  // Check if the string reads the same forward and backward
+  return cleanStr === cleanStr.split('').reverse().join('');
 }
 `);
       } else {
         // Default template
         setInitialCode(`// ${question.title} solution
 function solution(input) {
-  // Your solution here
+  // Your implementation here
   
+  // Read the problem statement carefully
+  // Consider edge cases
+  // Test your solution with different inputs
+  
+  // Code here
+  
+  return result;
 }
 `);
       }
@@ -206,8 +316,8 @@ function solution(input) {
       setQuestion(data);
       setFetchError(null);
     } catch (error) {
-      console.error('Error generating new question:', error);
-      setFetchError('Failed to generate a new question. Using a sample question instead.');
+      console.error('Error generating question:', error);
+      setFetchError('Failed to generate a question. Using a sample question instead.');
       // Use mock question as fallback
       setQuestion(mockQuestion);
     } finally {
@@ -215,154 +325,219 @@ function solution(input) {
     }
   };
 
-  const handleBack = () => {
-    navigate('/interviews');
-  };
-
-  const handleRunCode = async (code: string, language: string) => {
-    setIsLoading(true);
+  const handleRunTest = async (code?: string) => {
+    const codeToRun = code || currentCode;
     
-    // Ensure we have a question to use
-    const currentQuestion = question || mockQuestion;
+    if (!question || !codeToRun) {
+      console.error("Cannot run test: missing question or code");
+      return;
+    }
+    
+    console.log(`Running test for question ID ${question.id} with language ${currentLanguage}`);
+    setIsLoading(true);
+    setShowResult(false);
     
     try {
-      if (!currentQuestion.id) {
-        throw new Error("Question ID is required for testing code");
-      }
+      // Submit code for testing but don't record it as a final submission
+      const testResult = await questionApi.testCode(question.id, codeToRun, currentLanguage);
+      console.log("Received test results:", testResult);
       
-      // Call the API to test the code
-      const result = await questionApi.testCode(currentQuestion.id, code, language);
+      // Format results for display
+      const passedCount = testResult.passed_test_cases;
+      const totalCount = testResult.total_test_cases;
+      const passRate = (passedCount / totalCount) * 100;
       
-      // Format the result message
-      let resultMessage = `Test cases passed: ${result.passed_test_cases}/${result.total_test_cases}\n\n`;
+      let resultText = `Test Results: ${passedCount}/${totalCount} tests passed (${passRate.toFixed(1)}%)\n\n`;
+      resultText += `Feedback: ${testResult.feedback}\n`;
+      resultText += `Time Complexity: ${testResult.time_complexity}\n`;
+      resultText += `Space Complexity: ${testResult.space_complexity}\n\n`;
       
-      // Add each test case result
-      result.results.forEach((testResult, index) => {
-        resultMessage += `Test Case ${index + 1}: ${testResult.passed ? '✅ Passed' : '❌ Failed'}\n`;
-        resultMessage += `Input: ${testResult.test_case.input}\n`;
-        resultMessage += `Expected Output: ${testResult.test_case.output}\n`;
-        resultMessage += `Your Output: ${testResult.actual_output || 'N/A'}\n`;
-        if (testResult.error_message) {
-          resultMessage += `Error: ${testResult.error_message}\n`;
+      // Add details for each test case
+      testResult.results.forEach((result, index) => {
+        resultText += `Test Case ${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
+        resultText += `Input: ${result.test_case.input}\n`;
+        resultText += `Expected Output: ${result.test_case.output}\n`;
+        resultText += `Actual Output: ${result.actual_output}\n`;
+        if (result.error_message) {
+          resultText += `Error: ${result.error_message}\n`;
         }
-        resultMessage += `\n`;
+        resultText += `Time: ${result.execution_time.toFixed(2)}ms\n\n`;
       });
       
-      setResult(resultMessage);
+      setResult(resultText);
       setShowResult(true);
     } catch (error) {
       console.error('Error testing code:', error);
-      
-      // Fallback to simulated testing in case of API error
-      // Use the actual test cases from the question
-      const testResults = currentQuestion.test_cases.map((test, index) => {
-        // For simulation, let's say the first two test cases pass and the third fails
-        const passed = index < 2;
-        return {
-          passed,
-          input: test.input,
-          expectedOutput: test.output,
-          actualOutput: passed ? test.output : "null",
-          explanation: test.explanation
-        };
-      });
-      
-      // Count passed tests
-      const passedCount = testResults.filter(t => t.passed).length;
-      
-      // Format the result message
-      let resultMessage = `Test cases passed: ${passedCount}/${currentQuestion.test_cases.length}\n\n`;
-      
-      // Add each test case result
-      testResults.forEach((test, index) => {
-        resultMessage += `Test Case ${index + 1}: ${test.passed ? '✅ Passed' : '❌ Failed'}\n`;
-        resultMessage += `Input: ${test.input}\n`;
-        resultMessage += `Expected Output: ${test.expectedOutput}\n`;
-        resultMessage += `Your Output: ${test.actualOutput}\n\n`;
-      });
-      
-      setResult(resultMessage);
+      setResult(`Error testing code: ${error}`);
       setShowResult(true);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmitCode = async (code: string, language: string) => {
-    setIsLoading(true);
+  const handleSubmit = async (code?: string) => {
+    const codeToSubmit = code || currentCode;
     
-    // Ensure we have a question to use
-    const currentQuestion = question || mockQuestion;
+    if (!question || !codeToSubmit) {
+      console.error("Cannot submit: missing question or code");
+      return;
+    }
+    
+    console.log(`Submitting solution for question ID ${question.id} with language ${currentLanguage}`);
+    setIsLoading(true);
+    setShowResult(false);
     
     try {
-      if (!currentQuestion.id) {
-        throw new Error("Question ID is required for submitting code");
-      }
+      // Submit code for testing
+      const testResult = await questionApi.testCode(question.id, codeToSubmit, currentLanguage);
+      console.log("Received submission results:", testResult);
+      setTestResults(testResult);
       
-      // Call the API to test the code for final submission
-      const result = await questionApi.testCode(currentQuestion.id, code, language);
+      // Format results for display
+      const passedCount = testResult.passed_test_cases;
+      const totalCount = testResult.total_test_cases;
+      const passRate = (passedCount / totalCount) * 100;
       
-      // Format the result message
-      let resultMessage = "Your solution has been submitted successfully!\n\n";
-      resultMessage += `Test cases passed: ${result.passed_test_cases}/${result.total_test_cases}\n\n`;
-      const passRate = Math.round((result.passed_test_cases / result.total_test_cases) * 100);
-      resultMessage += `Overall Score: ${passRate}%\n\n`;
+      let resultText = `Test Results: ${passedCount}/${totalCount} tests passed (${passRate.toFixed(1)}%)\n\n`;
+      resultText += `Feedback: ${testResult.feedback}\n`;
+      resultText += `Time Complexity: ${testResult.time_complexity}\n`;
+      resultText += `Space Complexity: ${testResult.space_complexity}\n\n`;
       
-      // Add complexity information
-      resultMessage += `Time Complexity: ${result.time_complexity || 'Unknown'}\n`;
-      resultMessage += `Space Complexity: ${result.space_complexity || 'Unknown'}\n\n`;
-      
-      // Add feedback
-      resultMessage += `Feedback: ${result.feedback || 'No feedback available.'}\n`;
-      
-      setResult(resultMessage);
-      setShowResult(true);
-    } catch (error) {
-      console.error('Error submitting code:', error);
-      
-      // Fallback to simulated submission in case of API error
-      // Use the actual test cases from the question
-      const testResults = currentQuestion.test_cases.map((test, index) => {
-        // For simulation, let's say the first two test cases pass and the third fails
-        const passed = index < 2;
-        return {
-          passed,
-          input: test.input,
-          expectedOutput: test.output,
-          actualOutput: passed ? test.output : "null"
-        };
+      // Add details for each test case
+      testResult.results.forEach((result, index) => {
+        resultText += `Test Case ${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
+        resultText += `Input: ${result.test_case.input}\n`;
+        resultText += `Expected Output: ${result.test_case.output}\n`;
+        resultText += `Actual Output: ${result.actual_output}\n`;
+        if (result.error_message) {
+          resultText += `Error: ${result.error_message}\n`;
+        }
+        resultText += `Time: ${result.execution_time.toFixed(2)}ms\n\n`;
       });
       
-      // Count passed tests
-      const passedCount = testResults.filter(t => t.passed).length;
-      const passRate = Math.round((passedCount / currentQuestion.test_cases.length) * 100);
+      setResult(resultText);
+      setShowResult(true);
+      setShowNextButton(true);
       
-      // Format the result message
-      let resultMessage = "Your solution has been submitted successfully!\n\n";
-      resultMessage += `Test cases passed: ${passedCount}/${currentQuestion.test_cases.length}\n\n`;
-      resultMessage += `Overall Score: ${passRate}%\n\n`;
-      resultMessage += "Time Complexity: O(n)\n";
-      resultMessage += "Space Complexity: O(n)\n\n";
-      
-      // Add feedback based on results
-      if (passRate === 100) {
-        resultMessage += "Feedback: Excellent work! Your solution is correct and optimal.";
-      } else if (passRate >= 75) {
-        resultMessage += "Feedback: Good job! Your solution works for most cases but has some room for improvement.";
-      } else {
-        resultMessage += "Feedback: Your solution is correct for most cases but fails when there are duplicate elements in the array. Consider how to handle this edge case.";
+      // Store test results in session if available
+      if (sessionId && sessionQuestionId && question) {
+        try {
+          await sessionApi.updateSessionQuestion(sessionId, question.id, {
+            code_submitted: codeToSubmit,
+            language: currentLanguage,
+            passed_tests: testResult.passed_test_cases,
+            total_tests: testResult.total_test_cases,
+            test_results: testResult,
+            end_time: new Date().toISOString(),
+            duration: 45 * 60 - timeLeft // Calculate time spent
+          });
+          console.log('Updated session with code submission results');
+          
+          // Don't automatically complete the session or redirect
+          // Let the user choose to go to the next question or end the interview
+        } catch (error) {
+          console.error('Failed to update session with code results:', error);
+        }
       }
       
-      setResult(resultMessage);
+    } catch (error) {
+      console.error('Error testing code:', error);
+      setResult(`Error testing code: ${error}`);
       setShowResult(true);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleNextQuestion = async () => {
+    // Reset states
+    setCurrentCode('');
+    setShowResult(false);
+    setIsLoading(true);
+    setShowNextButton(false);
+    setTestResults(null);
+    setFetchingQuestion(true);
+    
+    // Generate a new question
+    try {
+      await fetchNewQuestion();
+      
+      // Create a new session question if we have a session
+      if (sessionId && question) {
+        try {
+          const response = await sessionApi.addQuestionToSession(sessionId, question.id);
+          setSessionQuestionId(response.id);
+          console.log('Added new question to session:', response);
+        } catch (error) {
+          console.error('Failed to add question to session:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error getting next question:', error);
+    } finally {
+      setIsLoading(false);
+      setFetchingQuestion(false);
+    }
+  };
+
+  const handleEndInterview = () => {
+    if (sessionId) {
+      // Complete the session when user ends the interview
+      const completeSession = async () => {
+        try {
+          setIsLoading(true);
+          
+          await sessionApi.updateSession(sessionId, {
+            end_time: new Date().toISOString(),
+            duration: 45 * 60 - timeLeft,
+            completed: true
+          });
+          console.log('Session completed');
+          
+          // Show redirect notification
+          setIsRedirecting(true);
+          setTimeout(() => {
+            // Redirect to the report page
+            navigate(`/report/${sessionId}`);
+          }, 2000);
+        } catch (error) {
+          console.error('Failed to complete session:', error);
+          setIsLoading(false);
+        }
+      };
+      
+      completeSession();
+    } else {
+      navigate('/');
     }
   };
 
   const handleEmotionUpdate = (data: any) => {
     setEmotionData(data);
-    // You can use this data for future analytics or feedback
+  };
+
+  const handleRunButton = () => {
+    // Get the latest code directly from the textarea ref
+    if (textareaRef.current) {
+      const latestCode = textareaRef.current.value;
+      setCurrentCode(latestCode);
+      handleRunTest(latestCode);
+    } else {
+      // Fallback to the currentCode state if ref isn't available
+      handleRunTest(currentCode);
+    }
+  };
+
+  const handleSubmitButton = () => {
+    // Get the latest code directly from the textarea ref
+    if (textareaRef.current) {
+      const latestCode = textareaRef.current.value;
+      setCurrentCode(latestCode);
+      handleSubmit(latestCode);
+    } else {
+      // Fallback to the currentCode state if ref isn't available
+      handleSubmit(currentCode);
+    }
   };
 
   // Show loading spinner while fetching question
@@ -381,213 +556,376 @@ function solution(input) {
   const currentQuestion = question || mockQuestion;
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
       <Navbar onLogout={onLogout} />
       
-      <Container maxWidth="xl" sx={{ py: 2 }}>
-        {fetchError && (
-          <Alert severity="warning" sx={{ mb: 2 }}>{fetchError}</Alert>
-        )}
+      {/* Top bar with timer and end interview button */}
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: 2,
+        borderBottom: '1px solid #e0e0e0'
+      }}>
+        <Button 
+          variant="contained" 
+          color="error"
+          startIcon={<ArrowBackIcon />} 
+          onClick={handleEndInterview}
+        >
+          End Interview
+        </Button>
         
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Button
-            startIcon={<ArrowBackIcon />}
-            onClick={handleBack}
-            sx={{ fontSize: '0.9rem' }}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <TimerIcon sx={{ mr: 1, color: timeLeft < 300 ? 'error.main' : 'inherit' }} />
+          <Typography 
+            variant="h6" 
+            color={timeLeft < 300 ? 'error' : 'inherit'}
           >
-            Back to Interviews
-          </Button>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <TimerIcon color="error" />
-            <Typography variant="h6" color="error">
-              {formatTime(timeLeft)}
-            </Typography>
-          </Box>
+            Time Remaining: {formatTime(timeLeft)}
+          </Typography>
         </Box>
-        
-        {/* Emotion Analysis - Visible only on small screens, at the top */}
-        <Box sx={{ display: { xs: 'block', lg: 'none' }, mb: 2 }}>
-          <EmotionAnalysis onEmotionUpdate={handleEmotionUpdate} />
+      </Box>
+      
+      {fetchingQuestion ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1 }}>
+          <CircularProgress />
         </Box>
-        
-        {/* Main Layout with 3 columns using flexbox instead of Grid */}
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, gap: 2 }}>
-          {/* Question panel - Left column */}
-          <Box sx={{ width: { xs: '100%', lg: '25%' } }}>
-            <Paper sx={{ p: 2, height: '100%' }}>
-              <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h5" fontWeight={600}>
-                  {currentQuestion.title}
-                </Typography>
+      ) : fetchError ? (
+        <Container sx={{ mt: 4 }}>
+          <Alert severity="error">{fetchError}</Alert>
+        </Container>
+      ) : (
+        <Box sx={{ 
+          display: 'flex', 
+          flex: 1, 
+          padding: 2, 
+          gap: 2, 
+          height: 'calc(100vh - 130px)', 
+          overflow: 'hidden'
+        }}>
+          {/* Left column: Question details */}
+          <Box sx={{ 
+            width: '25%', 
+            display: 'flex', 
+            flexDirection: 'column', 
+            overflow: 'auto'
+          }}>
+            <Paper sx={{ p: 2, mb: 2 }}>
+              <Typography variant="h5" gutterBottom>{question?.title}</Typography>
+              
+              <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
                 <Chip 
-                  label={currentQuestion.difficulty.toUpperCase()} 
+                  label={question?.difficulty?.toUpperCase()} 
                   color={
-                    currentQuestion.difficulty === 'easy' ? 'success' : 
-                    currentQuestion.difficulty === 'medium' ? 'warning' : 'error'
-                  }
-                  size="small"
+                    question?.difficulty === 'easy' ? 'success' : 
+                    question?.difficulty === 'medium' ? 'warning' : 'error'
+                  } 
+                  size="small" 
                 />
+                {question?.topics?.map((topic, index) => (
+                  <Chip key={index} label={topic} size="small" variant="outlined" />
+                ))}
               </Box>
               
               <Typography variant="body1" paragraph>
-                {currentQuestion.desc}
+                {question?.desc}
               </Typography>
               
-              <Typography variant="h6" fontWeight={600} sx={{ mt: 3, mb: 1 }}>
+              <Divider sx={{ my: 2 }} />
+              
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                 Example:
               </Typography>
-              <Box sx={{ backgroundColor: '#f8f9fa', p: 2, borderRadius: 1, mb: 2, fontFamily: 'monospace' }}>
-                <Typography variant="body2">
-                  <strong>Input:</strong> {currentQuestion.example.input}
+              
+              <Box sx={{ backgroundColor: '#f5f5f5', p: 1.5, borderRadius: 1, mb: 2 }}>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                  <b>Input:</b> {question?.example?.input}
                 </Typography>
-                <Typography variant="body2">
-                  <strong>Output:</strong> {currentQuestion.example.output}
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                  <b>Output:</b> {question?.example?.output}
                 </Typography>
-                <Typography variant="body2">
-                  <strong>Explanation:</strong> {currentQuestion.example.explanation}
-                </Typography>
+                {question?.example?.explanation && (
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                    <b>Explanation:</b> {question?.example?.explanation}
+                  </Typography>
+                )}
               </Box>
               
-              <Typography variant="h6" fontWeight={600} sx={{ mt: 3, mb: 1 }}>
-                Test Cases:
-              </Typography>
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography>View Test Cases</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  {currentQuestion.test_cases.map((testCase, index) => (
-                    <Box key={index} sx={{ backgroundColor: '#f8f9fa', p: 2, borderRadius: 1, mb: 2, fontFamily: 'monospace' }}>
-                      <Typography variant="body2" fontWeight={600}>
-                        Test Case {index + 1}:
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Input:</strong> {testCase.input}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Expected Output:</strong> {testCase.output}
-                      </Typography>
-                    </Box>
-                  ))}
-                </AccordionDetails>
-              </Accordion>
+              <Divider sx={{ my: 2 }} />
               
-              <Typography variant="h6" fontWeight={600} sx={{ mt: 3, mb: 1 }}>
+              <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                 Constraints:
               </Typography>
-              <ul style={{ paddingLeft: '1.5rem', marginTop: 0 }}>
-                {currentQuestion.constraints.map((constraint, index) => (
+              
+              <ul style={{ paddingLeft: '20px', marginTop: 0 }}>
+                {question?.constraints?.map((constraint, index) => (
                   <li key={index}>
                     <Typography variant="body2">{constraint}</Typography>
                   </li>
                 ))}
               </ul>
               
-              <Typography variant="h6" fontWeight={600} sx={{ mt: 3, mb: 1 }}>
-                Topics:
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {currentQuestion.topics.map((topic, index) => (
-                  <Chip key={index} label={topic} size="small" />
-                ))}
+              <Divider sx={{ my: 2 }} />
+              
+              <Accordion>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Typography variant="subtitle1" fontWeight="bold">Test Cases</Typography>
+                </AccordionSummary>
+                <AccordionDetails>
+                  {question?.test_cases?.map((testCase, index) => (
+                    <Box key={index} sx={{ mb: 2, backgroundColor: '#f5f5f5', p: 1.5, borderRadius: 1 }}>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        <b>Input:</b> {testCase.input}
+                      </Typography>
+                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                        <b>Output:</b> {testCase.output}
+                      </Typography>
+                      {testCase.explanation && (
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                          <b>Explanation:</b> {testCase.explanation}
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </AccordionDetails>
+              </Accordion>
+            </Paper>
+          </Box>
+          
+          {/* Middle column: Code Editor */}
+          <Box sx={{ 
+            width: '50%',
+            display: 'flex', 
+            flexDirection: 'column',
+            height: '100%'
+          }}>
+            <Paper sx={{ p: 2, mb: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ 
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between', 
+                alignItems: { xs: 'flex-start', sm: 'center' },
+                mb: 2,
+                gap: 2
+              }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mb: { xs: 1, sm: 0 } }}>
+                  Your Solution
+                </Typography>
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: { xs: 'column', sm: 'row' },
+                  alignItems: 'center', 
+                  gap: 2,
+                  width: { xs: '100%', sm: 'auto' }
+                }}>
+                  <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                    <Button 
+                      variant="outlined"
+                      onClick={handleRunButton}
+                      disabled={isLoading || !question}
+                      startIcon={<PlayArrowIcon />}
+                      sx={{ 
+                        borderRadius: 2,
+                        flexGrow: { xs: 1, sm: 0 }
+                      }}
+                    >
+                      Run Tests
+                    </Button>
+                    <Button 
+                      variant="contained" 
+                      color="primary"
+                      onClick={handleSubmitButton}
+                      disabled={isLoading || !question}
+                      sx={{ 
+                        borderRadius: 2,
+                        flexGrow: { xs: 1, sm: 0 }
+                      }}
+                    >
+                      Submit Solution
+                    </Button>
+                  </Box>
+                  
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: { xs: 'flex-start', sm: 'flex-end' },
+                    mt: { xs: 1, sm: 0 }
+                  }}>
+                    <Typography variant="caption" color="text.secondary">
+                      <b>Run Tests:</b> Ctrl+Enter
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      <b>Submit:</b> Ctrl+Shift+Enter
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+              <Box sx={{ flex: 1, minHeight: 0 }}>
+                <CodeEditor
+                  initialCode={initialCode}
+                  questionTitle={question?.title || "Coding Question"}
+                  onRun={(code, language) => {
+                    console.log("Running code with language:", language);
+                    setCurrentLanguage(language);
+                    handleRunTest(code);
+                  }}
+                  onSubmit={(code, language) => {
+                    console.log("Submitting code with language:", language);
+                    setCurrentLanguage(language);
+                    handleSubmit(code);
+                  }}
+                  textareaRef={textareaRef}
+                />
+              </Box>
+            </Paper>
+            
+            <Paper sx={{ p: 2 }}>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                <Typography variant="h6" fontWeight="bold">Test Results</Typography>
+                <Box display="flex" gap={1}>
+                  {showNextButton && (
+                    <Button 
+                      variant="contained" 
+                      color="primary" 
+                      onClick={handleNextQuestion}
+                      sx={{ mr: 2 }}
+                    >
+                      Next Question
+                    </Button>
+                  )}
+                  {sessionId && (
+                    <Button 
+                      variant="outlined" 
+                      color="error" 
+                      onClick={handleEndInterview}
+                    >
+                      End Interview
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+              
+              {showResult ? (
+                <Box sx={{ 
+                  backgroundColor: '#f5f5f5', 
+                  p: 2, 
+                  borderRadius: 2, 
+                  maxHeight: '300px', 
+                  overflow: 'auto',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  {isRedirecting && (
+                    <Alert severity="success" sx={{ mb: 2 }}>
+                      Your solution has been submitted! Redirecting to session report in a few seconds...
+                    </Alert>
+                  )}
+                  
+                  {testResults && (
+                    <>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="h6">
+                          Result: {testResults.passed ? 'Passed' : 'Failed'}
+                        </Typography>
+                        <Typography variant="h6" color={testResults.passed ? 'success.main' : 'error.main'}>
+                          {testResults.passed_test_cases}/{testResults.total_test_cases} Tests Passed
+                        </Typography>
+                      </Box>
+                      
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">Feedback:</Typography>
+                        <Typography variant="body2">{testResults.feedback}</Typography>
+                      </Box>
+                      
+                      <Box sx={{ display: 'flex', gap: 3, mb: 2 }}>
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight="bold">Time Complexity:</Typography>
+                          <Typography variant="body2">{testResults.time_complexity}</Typography>
+                        </Box>
+                        <Box>
+                          <Typography variant="subtitle2" fontWeight="bold">Space Complexity:</Typography>
+                          <Typography variant="body2">{testResults.space_complexity}</Typography>
+                        </Box>
+                      </Box>
+                      
+                      <Divider sx={{ my: 2 }} />
+                      
+                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Test Case Results:</Typography>
+                      
+                      {testResults.results.map((result, index) => (
+                        <Box 
+                          key={index} 
+                          sx={{ 
+                            mb: 2, 
+                            p: 1.5, 
+                            borderRadius: 1, 
+                            border: 1,
+                            borderColor: result.passed ? 'success.light' : 'error.light',
+                            backgroundColor: result.passed ? 'rgba(76, 175, 80, 0.08)' : 'rgba(239, 83, 80, 0.08)'
+                          }}
+                        >
+                          <Typography fontWeight="bold" color={result.passed ? 'success.main' : 'error.main'}>
+                            Test Case {index + 1}: {result.passed ? 'PASSED' : 'FAILED'}
+                          </Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', my: 0.5 }}>
+                            <b>Input:</b> {result.test_case.input}
+                          </Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', my: 0.5 }}>
+                            <b>Expected Output:</b> {result.test_case.output}
+                          </Typography>
+                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', my: 0.5 }}>
+                            <b>Actual Output:</b> {result.actual_output}
+                          </Typography>
+                          {result.error_message && (
+                            <Typography variant="body2" color="error" sx={{ whiteSpace: 'pre-wrap', my: 0.5 }}>
+                              <b>Error:</b> {result.error_message}
+                            </Typography>
+                          )}
+                          <Typography variant="body2" sx={{ mt: 0.5 }}>
+                            <b>Execution Time:</b> {result.execution_time.toFixed(2)}ms
+                          </Typography>
+                        </Box>
+                      ))}
+                    </>
+                  )}
+                  
+                  {!testResults && result && (
+                    <Alert severity="error" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {result}
+                    </Alert>
+                  )}
+                </Box>
+              ) : (
+                <Box sx={{ 
+                  p: 4, 
+                  textAlign: 'center', 
+                  color: 'text.secondary',
+                  backgroundColor: '#f9f9f9',
+                  borderRadius: 2,
+                  border: '1px dashed #e0e0e0'
+                }}>
+                  <Typography variant="body1">
+                    Run your code to see test results here
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                    Click "Run Tests" or press Ctrl+Enter
+                  </Typography>
+                </Box>
+              )}
+            </Paper>
+          </Box>
+          
+          {/* Right column: Emotion Analysis */}
+          <Box sx={{ width: '25%', height: '100%' }}>
+            <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <Typography variant="h6" gutterBottom>Emotion Analysis</Typography>
+              <Box sx={{ flex: 1 }}>
+                <EmotionAnalysis onEmotionUpdate={handleEmotionUpdate} />
               </Box>
             </Paper>
           </Box>
-          
-          {/* Code editor panel - Middle column */}
-          <Box sx={{ width: { xs: '100%', lg: '50%' } }}>
-            <Paper sx={{ height: '100%', position: 'relative' }}>
-              {!showResult ? (
-                <CodeEditor 
-                  initialCode={initialCode}
-                  questionTitle={currentQuestion.title}
-                  onRun={handleRunCode}
-                  onSubmit={handleSubmitCode}
-                />
-              ) : (
-                <Box sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-                    Results
-                  </Typography>
-                  
-                  <Box 
-                    sx={{ 
-                      flexGrow: 1,
-                      backgroundColor: '#f8f9fa', 
-                      p: 2, 
-                      borderRadius: 1, 
-                      minHeight: '400px',
-                      maxHeight: '60vh',
-                      overflowY: 'auto',
-                      fontFamily: 'monospace',
-                      whiteSpace: 'pre-wrap',
-                      fontSize: '14px',
-                      lineHeight: 1.5
-                    }}
-                  >
-                    {result}
-                  </Box>
-                  
-                  <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                    <Button variant="outlined" onClick={() => setShowResult(false)}>
-                      Back to Code
-                    </Button>
-                    <Button variant="contained" color="primary" onClick={handleBack}>
-                      Finish Interview
-                    </Button>
-                  </Box>
-                </Box>
-              )}
-              
-              {isLoading && (
-                <Box 
-                  sx={{ 
-                    position: 'absolute', 
-                    top: 0, 
-                    left: 0, 
-                    right: 0, 
-                    bottom: 0, 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center',
-                    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-                    zIndex: 1000
-                  }}
-                >
-                  <CircularProgress />
-                </Box>
-              )}
-            </Paper>
-          </Box>
-          
-          {/* Emotion Analysis panel - Right column, only visible on larger screens */}
-          <Box sx={{ width: { xs: '100%', lg: '25%' }, display: { xs: 'none', lg: 'block' } }}>
-            <EmotionAnalysis onEmotionUpdate={handleEmotionUpdate} />
-            
-            {/* Interview Tips Box */}
-            <Paper elevation={3} sx={{ p: 2, mt: 2 }}>
-              <Typography variant="h6" sx={{ mb: 2 }}>Interview Tips</Typography>
-              
-              <Typography variant="body2" paragraph>
-                <strong>Explain your thought process:</strong> Interviewers value your reasoning as much as the solution itself.
-              </Typography>
-              
-              <Typography variant="body2" paragraph>
-                <strong>Analyze complexity:</strong> Always discuss time and space complexity of your solution.
-              </Typography>
-              
-              <Typography variant="body2" paragraph>
-                <strong>Consider edge cases:</strong> Empty inputs, duplicates, and boundary conditions are common test cases.
-              </Typography>
-              
-              <Typography variant="body2">
-                <strong>Optimize incrementally:</strong> Start with a working solution, then improve it step by step.
-              </Typography>
-            </Paper>
-          </Box>
         </Box>
-      </Container>
+      )}
     </Box>
   );
 };

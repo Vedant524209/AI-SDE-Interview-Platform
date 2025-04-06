@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Container, Button, Paper, Divider, Chip, Stack, CircularProgress, List, ListItem, ListItemText, Card, CardContent, Alert } from '@mui/material';
+import { Box, Typography, Container, Button, Paper, Divider, Chip, Stack, CircularProgress, List, ListItem, ListItemText, Card, CardContent, Alert, Grid } from '@mui/material';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import QuizIcon from '@mui/icons-material/Quiz';
 import FeedbackIcon from '@mui/icons-material/Feedback';
 import SentimentSatisfiedAltIcon from '@mui/icons-material/SentimentSatisfiedAlt';
 import VideocamIcon from '@mui/icons-material/Videocam';
+import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
+import CodeIcon from '@mui/icons-material/Code';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import { questionApi, Question } from '../services/api';
@@ -98,6 +100,11 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
            difficulty === 'medium' ? 'warning' : 'error';
   };
 
+  const getDifficultyLabel = (difficulty: string) => {
+    return difficulty === 'easy' ? 'Easy' : 
+           difficulty === 'medium' ? 'Medium' : 'Hard';
+  };
+
   return (
     <Box sx={{ minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
       <Navbar onLogout={onLogout} />
@@ -105,10 +112,10 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Box sx={{ mb: 4 }}>
           <Typography variant="h3" component="h1" sx={{ fontWeight: 700, color: '#2a394f', mb: 1 }}>
-            Software Engineer
+            Coding Interview Preparation
           </Typography>
           <Typography variant="h6" component="h2" sx={{ color: '#637381', mb: 4 }}>
-            Practice with AI-powered interviews
+            Practice with AI-powered interviews and real-time feedback
           </Typography>
           
           {error && (
@@ -117,57 +124,69 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
             </Alert>
           )}
           
-          {!isStarted && (
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, mb: 4 }}>
-              <Box sx={{ flex: { md: 2 } }}>
-                <Paper 
-                  elevation={0} 
-                  sx={{ 
-                    p: 3, 
-                    height: '100%',
-                    backgroundColor: '#1a2634', 
-                    color: 'white',
-                    borderRadius: 2
-                  }}
-                >
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Box component="span" sx={{ mr: 1, fontSize: '1.5rem' }}>👋</Box>
-                    <Typography variant="h6">
-                      You have 1 mock interview available
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, mb: 4 }}>
+            <Box sx={{ flex: { md: 2 } }}>
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: 3, 
+                  height: '100%',
+                  backgroundColor: '#1a2634', 
+                  color: 'white',
+                  borderRadius: 2
+                }}
+              >
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <TipsAndUpdatesIcon sx={{ mr: 1 }} />
+                    <Typography variant="h6" fontWeight="bold">
+                      Interview Tips
                     </Typography>
                   </Box>
-                </Paper>
-              </Box>
-              <Box sx={{ flex: { md: 1 } }}>
-                <Paper 
-                  elevation={0} 
-                  sx={{ 
-                    p: 3, 
-                    height: '100%',
-                    backgroundColor: '#0288d1', 
-                    color: 'white',
-                    borderRadius: 2
-                  }}
-                >
-                  <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <SentimentSatisfiedAltIcon sx={{ mr: 1 }} />
-                      <Typography variant="h6" fontWeight="bold">
-                        NEW: Emotion Analysis
-                      </Typography>
-                    </Box>
-                    <Typography variant="body2" sx={{ mb: 2 }}>
-                      Your interview session now includes real-time emotion tracking to help improve your interview performance.
-                    </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <VideocamIcon fontSize="small" sx={{ mr: 0.5 }} />
-                      <Typography variant="caption">Camera access required</Typography>
-                    </Box>
-                  </Box>
-                </Paper>
-              </Box>
+                  <Typography variant="body2">
+                    • Explain your approach before you start coding
+                  </Typography>
+                  <Typography variant="body2">
+                    • Think about edge cases in your solution
+                  </Typography>
+                  <Typography variant="body2">
+                    • Consider time and space complexity
+                  </Typography>
+                  <Typography variant="body2">
+                    • Test your solution with a few examples
+                  </Typography>
+                </Box>
+              </Paper>
             </Box>
-          )}
+            <Box sx={{ flex: { md: 1 } }}>
+              <Paper 
+                elevation={0} 
+                sx={{ 
+                  p: 3, 
+                  height: '100%',
+                  backgroundColor: '#0288d1', 
+                  color: 'white',
+                  borderRadius: 2
+                }}
+              >
+                <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <SentimentSatisfiedAltIcon sx={{ mr: 1 }} />
+                    <Typography variant="h6" fontWeight="bold">
+                      Emotion Analysis
+                    </Typography>
+                  </Box>
+                  <Typography variant="body2" sx={{ mb: 2 }}>
+                    Your interview session now includes real-time emotion tracking to help improve your performance.
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <VideocamIcon fontSize="small" sx={{ mr: 0.5 }} />
+                    <Typography variant="caption">Camera access required</Typography>
+                  </Box>
+                </Box>
+              </Paper>
+            </Box>
+          </Box>
           
           <Paper elevation={1} sx={{ borderRadius: 2, overflow: 'hidden', mb: 4 }}>
             <Box sx={{ 
@@ -176,15 +195,15 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
               alignItems: 'center',
               borderBottom: '1px solid #e0e0e0'
             }}>
-              <AccessTimeIcon sx={{ color: '#637381', mr: 2 }} />
+              <CodeIcon sx={{ color: '#637381', mr: 2 }} />
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                45 minutes coding interview
+                45-Minute Coding Interview
               </Typography>
             </Box>
             
             <Box sx={{ p: 3 }}>
               <Typography variant="body1" sx={{ mb: 3 }}>
-                Solve algorithmic and data structure problems designed to test your problem-solving skills
+                Solve algorithmic and data structure problems with real-time feedback and performance tracking.
               </Typography>
               
               {loading ? (
@@ -205,7 +224,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
                     fontWeight: 600
                   }}
                 >
-                  Start Interview
+                  Start New Interview
                 </Button>
               ) : (
                 <Box sx={{ 
@@ -231,7 +250,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
             </Box>
           </Paper>
           
-          {/* Previous Questions Section */}
+          {/* Available Questions Section */}
           <Box sx={{ mb: 5 }}>
             <Typography variant="h5" component="h3" sx={{ fontWeight: 600, mb: 3, color: '#2a394f' }}>
               Available Questions
@@ -241,100 +260,87 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
               <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
                 <CircularProgress />
               </Box>
-            ) : error && questions.length === 0 ? (
-              <Paper elevation={1} sx={{ p: 3, borderRadius: 2, bgcolor: '#fff4e5', color: '#7A4F01' }}>
-                <Typography>{error}</Typography>
-              </Paper>
             ) : questions.length === 0 ? (
               <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
                 <Typography>No questions available. Start a new interview to generate one!</Typography>
               </Paper>
             ) : (
-              <Stack spacing={2}>
-                {questions.map((question) => (
-                  <Card key={question.id} elevation={1}>
-                    <CardContent>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                          {question.title}
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 2 }}>
+                {questions.map((q) => (
+                  <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }} key={q.id}>
+                    <Paper 
+                      elevation={1} 
+                      sx={{ 
+                        p: 2, 
+                        borderRadius: 2, 
+                        transition: 'transform 0.2s, box-shadow 0.2s',
+                        '&:hover': {
+                          transform: 'translateY(-4px)',
+                          boxShadow: 3,
+                          cursor: 'pointer'
+                        }
+                      }}
+                      onClick={() => handlePracticeQuestion(q.id)}
+                    >
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                        <Typography variant="h6" fontWeight={600} sx={{ mb: 1, color: '#2a394f' }}>
+                          {q.title}
                         </Typography>
                         <Chip 
-                          label={question.difficulty.toUpperCase()}
-                          color={getDifficultyColor(question.difficulty)}
+                          label={getDifficultyLabel(q.difficulty)}
                           size="small"
+                          color={getDifficultyColor(q.difficulty)} 
                         />
                       </Box>
-                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        {question.desc.length > 150 ? question.desc.substring(0, 150) + '...' : question.desc}
+                      
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          mb: 2, 
+                          color: '#637381',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          height: '40px' 
+                        }}
+                      >
+                        {q.desc}
                       </Typography>
+                      
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {question.topics.map((topic, index) => (
-                          <Chip key={index} label={topic} size="small" variant="outlined" />
+                        {q.topics.map((topic, idx) => (
+                          <Chip 
+                            key={idx} 
+                            label={topic} 
+                            size="small" 
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem' }}
+                          />
                         ))}
                       </Box>
-                      <Button 
-                        variant="outlined" 
-                        size="small" 
-                        sx={{ mt: 2 }}
-                        onClick={() => handlePracticeQuestion(question.id)}
+                      
+                      <Box 
+                        sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'flex-end', 
+                          mt: 2 
+                        }}
                       >
-                        Practice This Question
-                      </Button>
-                    </CardContent>
-                  </Card>
+                        <Button 
+                          size="small" 
+                          variant="outlined"
+                          sx={{ borderRadius: 4 }}
+                        >
+                          Practice Now
+                        </Button>
+                      </Box>
+                    </Paper>
+                  </Box>
                 ))}
-              </Stack>
+              </Box>
             )}
-          </Box>
-          
-          <Box sx={{ mb: 5 }}>
-            <Typography variant="h5" component="h3" sx={{ fontWeight: 600, mb: 3, color: '#2a394f' }}>
-              What to expect
-            </Typography>
-            
-            <Stack spacing={3}>
-              <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                  <PersonIcon sx={{ color: '#1976d2', mr: 2, mt: 0.5 }} />
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                      AI-Interviewer
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary">
-                      The AI-powered bot will pose challenging and dynamic questions to you, just like in a real interview
-                    </Typography>
-                  </Box>
-                </Box>
-              </Paper>
-              
-              <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                  <QuizIcon sx={{ color: '#1976d2', mr: 2, mt: 0.5 }} />
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                      Real interview questions
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary">
-                      Get questions on real world topics like arrays, strings, linked lists, trees and graphs
-                    </Typography>
-                  </Box>
-                </Box>
-              </Paper>
-              
-              <Paper elevation={1} sx={{ p: 3, borderRadius: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-                  <FeedbackIcon sx={{ color: '#1976d2', mr: 2, mt: 0.5 }} />
-                  <Box>
-                    <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
-                      Personalized feedback
-                    </Typography>
-                    <Typography variant="body1" color="textSecondary">
-                      Get detailed feedback on your performance so you can ace your next job interview
-                    </Typography>
-                  </Box>
-                </Box>
-              </Paper>
-            </Stack>
           </Box>
         </Box>
       </Container>

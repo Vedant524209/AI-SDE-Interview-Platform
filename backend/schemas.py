@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, confloat
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from datetime import datetime
 from enum import Enum
 
@@ -10,10 +10,10 @@ class EmotionType(str, Enum):
     UNCOMFORTABLE = "uncomfortable"
 
 class UserState(BaseModel):
-    attention_level: confloat(ge=0, le=1) = Field(..., description="0-1 scale of user attention")
-    positivity_level: confloat(ge=0, le=1) = Field(..., description="0-1 scale of positive emotions")
-    arousal_level: confloat(ge=0, le=1) = Field(..., description="0-1 scale of emotional arousal")
-    dominant_emotion: EmotionType = Field(..., description="Dominant emotional state")
+    attention_level: float = Field(..., ge=0, le=1)
+    positivity_level: float = Field(..., ge=0, le=1)
+    arousal_level: float = Field(..., ge=0, le=1)
+    dominant_emotion: str
 
 class Example(BaseModel):
     input: str
@@ -26,52 +26,153 @@ class TestCase(BaseModel):
     explanation: Optional[str] = None
 
 class QuestionCreate(BaseModel):
-    difficulty: str = Field(..., pattern="^(easy|medium|hard)$")
-    user_state: Optional[UserState] = None  # Track user state when question is created
-
-class QuestionBase(BaseModel):
-    title: str = Field(..., min_length=1)
-    desc: str = Field(..., min_length=1)
-    difficulty: str = Field(..., pattern="^(easy|medium|hard)$")
+    title: Optional[str] = None
+    desc: Optional[str] = None
+    difficulty: Optional[str] = "medium"
     example: Optional[Example] = None
-    constraints: List[str] = Field(default_factory=list)
-    topics: List[str] = Field(default_factory=list)
+    constraints: Optional[List[str]] = []
+    topics: Optional[List[str]] = []
     test_cases: Optional[List[TestCase]] = None
+    user_state: Optional[UserState] = None
 
-class Question(QuestionBase):
+class Question(BaseModel):
     id: int
+    title: str
+    desc: str
+    difficulty: str
+    example: Example
+    constraints: List[str]
+    topics: List[str]
+    test_cases: List[TestCase]
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
-    # Include emotion metrics in response if available
     attention_level: Optional[float] = None
     positivity_level: Optional[float] = None
     arousal_level: Optional[float] = None
     dominant_emotion: Optional[str] = None
 
     class Config:
-        from_attributes = True
+        orm_mode = True
+        json_encoders = {
+            datetime: lambda dt: dt.isoformat() if dt else None
+        }
 
 class CodeSubmission(BaseModel):
-    """Schema for code submission to test against question test cases."""
-    code: str = Field(..., min_length=1, description="The code to test")
-    language: str = Field(..., description="Programming language of the code submission")
+    code: str
+    language: Optional[str] = "javascript"
 
 class TestCaseResult(BaseModel):
-    """Result of running a single test case."""
-    test_case: TestCase
     passed: bool
-    actual_output: Optional[str] = None
+    test_case: TestCase
+    actual_output: str
+    execution_time: float  # in seconds
     error_message: Optional[str] = None
-    execution_time: Optional[float] = None  # in milliseconds
 
 class TestResult(BaseModel):
-    """Result of testing code submission against all test cases."""
     passed: bool
-    total_test_cases: int
     passed_test_cases: int
+    total_test_cases: int
     results: List[TestCaseResult]
-    overall_execution_time: Optional[float] = None  # in milliseconds
-    feedback: Optional[str] = None
-    time_complexity: Optional[str] = None
-    space_complexity: Optional[str] = None 
+    feedback: str
+    time_complexity: str
+    space_complexity: str
+
+# New schemas for interview session tracking
+
+class UserBase(BaseModel):
+    username: str
+    email: str
+
+class UserCreate(UserBase):
+    password: str
+
+class User(UserBase):
+    id: int
+    created_at: datetime
+
+    class Config:
+        orm_mode = True
+
+class EmotionSnapshotCreate(BaseModel):
+    attention_level: float = Field(ge=0, le=1)
+    positivity_level: float = Field(ge=0, le=1)
+    arousal_level: float = Field(ge=0, le=1) 
+    dominant_emotion: str
+    face_detected: bool = True
+    question_id: Optional[int] = None
+
+class EmotionSnapshot(EmotionSnapshotCreate):
+    id: int
+    session_id: int
+    timestamp: datetime
+    
+    class Config:
+        orm_mode = True
+
+class SessionQuestionCreate(BaseModel):
+    question_id: int
+    order_index: int = 0
+
+class SessionQuestionUpdate(BaseModel):
+    code_submitted: Optional[str] = None
+    language: Optional[str] = None
+    passed_tests: Optional[int] = None
+    total_tests: Optional[int] = None
+    test_results: Optional[Dict[str, Any]] = None
+    end_time: Optional[datetime] = None
+    duration: Optional[int] = None
+
+class SessionQuestion(BaseModel):
+    id: int
+    session_id: int
+    question_id: int
+    order_index: int
+    code_submitted: Optional[str] = None
+    language: Optional[str] = None
+    passed_tests: Optional[int] = None
+    total_tests: Optional[int] = None
+    test_results: Optional[Dict[str, Any]] = None
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    duration: Optional[int] = None
+    created_at: datetime
+    
+    class Config:
+        orm_mode = True
+
+class InterviewSessionCreate(BaseModel):
+    user_id: Optional[int] = None
+    session_name: Optional[str] = None
+
+class InterviewSessionUpdate(BaseModel):
+    end_time: Optional[datetime] = None
+    duration: Optional[int] = None
+    completed: Optional[bool] = None
+    avg_attention_level: Optional[float] = None
+    avg_positivity_level: Optional[float] = None
+    avg_arousal_level: Optional[float] = None
+    overall_assessment: Optional[str] = None
+
+class InterviewSession(BaseModel):
+    id: int
+    user_id: Optional[int] = None
+    session_name: Optional[str] = None
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    duration: Optional[int] = None
+    completed: bool
+    avg_attention_level: Optional[float] = None
+    avg_positivity_level: Optional[float] = None
+    avg_arousal_level: Optional[float] = None
+    overall_assessment: Optional[str] = None
+    created_at: datetime
+    
+    class Config:
+        orm_mode = True
+
+class InterviewSessionWithDetails(InterviewSession):
+    session_questions: List[SessionQuestion] = []
+    emotion_snapshots: List[EmotionSnapshot] = []
+    
+    class Config:
+        orm_mode = True 
