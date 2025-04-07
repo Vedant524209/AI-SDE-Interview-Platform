@@ -10,7 +10,8 @@ import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 import CodeIcon from '@mui/icons-material/Code';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
-import { questionApi, Question } from '../services/api';
+import { questionApi } from '../services/api';
+import { Question } from '../types';
 
 interface InterviewPageProps {
   onLogout: () => void;
@@ -266,7 +267,7 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
               </Paper>
             ) : (
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 2 }}>
-                {questions.map((q) => (
+                {questions.map((q: Question) => (
                   <Box sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }} key={q.id}>
                     <Paper 
                       elevation={1} 
@@ -310,11 +311,11 @@ const InterviewPage: React.FC<InterviewPageProps> = ({ onLogout }) => {
                       </Typography>
                       
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                        {q.topics.map((topic, idx) => (
-                          <Chip 
-                            key={idx} 
-                            label={topic} 
-                            size="small" 
+                        {q.topics.map((topic: string, idx: number) => (
+                          <Chip
+                            key={idx}
+                            label={topic}
+                            size="small"
                             variant="outlined"
                             sx={{ fontSize: '0.7rem' }}
                           />

@@ -3,6 +3,7 @@ import logging
 import os
 import requests
 import time
+import sys
 from services import MOCK_MODE
 
 # Configure logging
@@ -30,13 +31,31 @@ def check_ollama_available():
         logger.warning(f"Ollama server not available: {str(e)}")
         return False, []
 
+def init_database():
+    """Initialize the database if it doesn't exist"""
+    try:
+        logger.info("Initializing database...")
+        from init_db import init_database as init_db
+        success = init_db()
+        if success:
+            logger.info("Database initialized successfully")
+            return True
+        else:
+            logger.error("Failed to initialize database")
+            return False
+    except Exception as e:
+        logger.error(f"Error initializing database: {str(e)}")
+        return False
+
 def main():
     """Main entry point for the application"""
-    # Create database directory if it doesn't exist
-    os.makedirs("./db", exist_ok=True)
-    
     # Configure logging
     logging.basicConfig(level=logging.INFO)
+    
+    # Initialize database
+    if not init_database():
+        logger.error("Failed to initialize MySQL database. Exiting...")
+        sys.exit(1)
     
     # Check if Ollama is available and get models
     ollama_available, available_models = check_ollama_available()

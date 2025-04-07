@@ -93,6 +93,7 @@ class SessionQuestion(Base):
     # Relationships
     session = relationship("InterviewSession", back_populates="session_questions")
     question = relationship("QuestionTable", back_populates="session_questions")
+    code_submissions = relationship("CodeSubmission", back_populates="session_question")
 
 class EmotionSnapshot(Base):
     __tablename__ = "emotion_snapshots"
@@ -114,4 +115,17 @@ class EmotionSnapshot(Base):
     face_detected = Column(Boolean, default=False)
     
     # Relationships
-    session = relationship("InterviewSession", back_populates="emotion_snapshots") 
+    session = relationship("InterviewSession", back_populates="emotion_snapshots")
+
+class CodeSubmission(Base):
+    __tablename__ = "code_submissions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    session_question_id = Column(Integer, ForeignKey("session_questions.id"))
+    code = Column(Text)
+    language = Column(String(50))
+    judge0_response = Column(JSON)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    session_question = relationship("SessionQuestion", back_populates="code_submissions") 
