@@ -10,6 +10,7 @@ import cv2
 import base64
 import numpy as np
 from typing import Dict, List, Any, Optional
+from judge0_service import judge0_service
 
 # Configure logging
 logging.basicConfig(
@@ -503,9 +504,7 @@ def generate_test_cases_from_example(question_data: dict) -> list:
 
 def evaluate_code_submission(code: str, language: str, question) -> dict:
     """
-    Evaluate a code submission against test cases in a question.
-    This is a simulated evaluation that doesn't actually execute the code for security reasons.
-    In a production environment, you'd use a sandboxed execution environment.
+    Evaluate a code submission against test cases in a question using Judge0.
     
     Args:
         code: The submitted code
@@ -516,9 +515,6 @@ def evaluate_code_submission(code: str, language: str, question) -> dict:
         A TestResult object with the evaluation results
     """
     logger.info(f"Evaluating {language} code submission for question: {question.title}")
-    
-    # In a real implementation, we would send the code to a secure sandbox for execution
-    # For this MVP, we'll simulate the execution with random results
     
     # Get test cases from the question
     test_cases = question.test_cases
@@ -536,40 +532,58 @@ def evaluate_code_submission(code: str, language: str, question) -> dict:
             "space_complexity": "Unknown"
         }
     
-    # For demo purposes, simulate running the code against test cases
-    # In a real implementation, we'd execute the code in a sandbox
+    # Execute code against each test case
     results = []
     passed_count = 0
     total_execution_time = 0
     
-    # Simulate test case execution
-    for i, test_case in enumerate(test_cases):
-        # For demonstration, pass the first two test cases and fail the third
-        passed = i < 2
-        execution_time = random.uniform(5, 100)  # Random execution time between 5-100ms
-        total_execution_time += execution_time
-        
-        # Create a result for this test case
-        if passed:
-            passed_count += 1
-            actual_output = test_case['output']
-            error_message = None
-        else:
-            # Simulate a failure
-            if i == 2:
-                actual_output = "null"  # Example output
-                error_message = "Output doesn't match expected result"
+    for test_case in test_cases:
+        try:
+            # Execute the code with the test case input
+            execution_result = judge0_service.execute_code(
+                code=code,
+                language=language,
+                stdin=test_case['input']
+            )
+            
+            # Process the execution result
+            execution_time = execution_result.get('time', 0) / 1000  # Convert to seconds
+            total_execution_time += execution_time
+            
+            # Check if execution was successful
+            if execution_result['status']['id'] == 3:  # 3: Accepted
+                actual_output = execution_result['stdout'].strip()
+                expected_output = test_case['output'].strip()
+                passed = actual_output == expected_output
+                
+                if passed:
+                    passed_count += 1
+                    error_message = None
+                else:
+                    error_message = f"Expected: {expected_output}, Got: {actual_output}"
             else:
-                actual_output = "Error"
-                error_message = "Runtime error in execution"
-        
-        results.append({
-            "test_case": test_case,
-            "passed": passed,
-            "actual_output": actual_output,
-            "error_message": error_message,
-            "execution_time": execution_time
-        })
+                # Execution failed
+                actual_output = None
+                passed = False
+                error_message = execution_result.get('stderr', 'Execution failed')
+            
+            results.append({
+                "test_case": test_case,
+                "passed": passed,
+                "actual_output": actual_output,
+                "error_message": error_message,
+                "execution_time": execution_time
+            })
+            
+        except Exception as e:
+            logger.error(f"Error executing test case: {str(e)}")
+            results.append({
+                "test_case": test_case,
+                "passed": False,
+                "actual_output": None,
+                "error_message": str(e),
+                "execution_time": 0
+            })
     
     # Calculate overall success
     total_test_cases = len(test_cases)
@@ -599,7 +613,7 @@ def evaluate_code_submission(code: str, language: str, question) -> dict:
         "feedback": feedback,
         "time_complexity": time_complexity,
         "space_complexity": space_complexity
-    } 
+    }
 
 def analyze_facial_expression(image_data: str) -> Dict[str, Any]:
     """

@@ -1,4 +1,8 @@
 import axios from 'axios';
+import { Question, TestResult } from '../types';
+
+// Re-export the Question type
+export type { Question, TestResult } from '../types';
 
 // Create an axios instance with base URL and config
 const api = axios.create({
@@ -19,26 +23,10 @@ export interface Example {
   explanation?: string;
 }
 
-export interface Question {
-  id: number;
-  title: string;
-  desc: string;
-  difficulty: string;
-  example: Example;
-  constraints: string[];
-  topics: string[];
-  test_cases: TestCase[];
-  created_at: string;
-  updated_at?: string;
-  attention_level?: number;
-  positivity_level?: number;
-  arousal_level?: number;
-  dominant_emotion?: string;
-}
-
 export interface CodeSubmission {
   code: string;
   language?: string;
+  session_question_id?: number;
 }
 
 export interface TestCaseResult {
@@ -47,16 +35,6 @@ export interface TestCaseResult {
   actual_output: string;
   execution_time: number;
   error_message?: string;
-}
-
-export interface TestResult {
-  passed: boolean;
-  passed_test_cases: number;
-  total_test_cases: number;
-  results: TestCaseResult[];
-  feedback: string;
-  time_complexity: string;
-  space_complexity: string;
 }
 
 export interface EmotionAnalysisResult {
@@ -242,6 +220,29 @@ export const questionApi = {
     }
   },
 
+  // Batch test code submission for a question
+  batchTestCode: async (
+    questionId: number, 
+    code: string, 
+    language: string = 'javascript',
+    sessionQuestionId?: number
+  ): Promise<TestResult> => {
+    try {
+      console.log(`Batch testing code submission for question ${questionId}`);
+      const submission: CodeSubmission = {
+        code,
+        language,
+        session_question_id: sessionQuestionId
+      };
+      const response = await api.post(`/questions/${questionId}/batch-test`, submission);
+      console.log('Batch code test results:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Failed to batch test code:', error);
+      throw error;
+    }
+  },
+
   // Analyze emotion from an image
   analyzeEmotion: async (imageData: string): Promise<EmotionAnalysisResult> => {
     try {
@@ -271,14 +272,25 @@ export const questionApi = {
   },
 
   // Health check
-  healthCheck: async (): Promise<{ status: string }> => {
+  healthCheck: async (): Promise<void> => {
     try {
-      console.log('Sending health check request to:', api.defaults.baseURL + '/health');
-      const response = await api.get('/health');
-      console.log('Health check response:', response.data);
+      await api.get('/health');
+    } catch (error) {
+      console.error('Health check failed:', error);
+      throw error;
+    }
+  },
+
+  // Evaluate code submission
+  evaluateCode: async (questionId: number, code: string, language: string): Promise<TestResult> => {
+    try {
+      const response = await api.post(`/questions/${questionId}/evaluate`, {
+        code,
+        language
+      });
       return response.data;
     } catch (error) {
-      console.error('API health check failed:', error);
+      console.error('Failed to evaluate code:', error);
       throw error;
     }
   }

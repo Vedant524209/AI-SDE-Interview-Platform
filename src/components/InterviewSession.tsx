@@ -1,13 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Container, Typography, Paper, Divider, Chip, Button, CircularProgress, Accordion, AccordionSummary, AccordionDetails, Alert, List, ListItem, ListItemIcon, ListItemText, Tooltip } from '@mui/material';
+import { Box, Container, Typography, Paper, Divider, Chip, Button, CircularProgress, Accordion, AccordionSummary, AccordionDetails, Alert, List, ListItem, ListItemIcon, ListItemText, Tooltip, Snackbar, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TimerIcon from '@mui/icons-material/Timer';
 import { useNavigate, useLocation } from 'react-router-dom';
-import CodeEditor from './CodeEditor';
+import CodeEditor, { SupportedLanguage } from './CodeEditor';
 import Navbar from './Navbar';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EmotionAnalysis from './EmotionAnalysis';
-import { questionApi, Question, TestCase, Example, sessionApi, TestResult } from '../services/api';
+import { questionApi } from '../services/api';
+import { judge0Service, JUDGE0_STATUS } from '../services/judge0Api';
+import { sessionApi } from '../services/sessionApi';
+import { Question, TestResult } from '../types';
+import { formatTime } from '../utils/timeUtils';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
@@ -99,6 +103,7 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
   }>>([]);
   const [activeQuestion, setActiveQuestion] = useState<number>(0);
   const [isNewInterviewStarted, setIsNewInterviewStarted] = useState<boolean>(false);
+  const [showSuccessAlert, setShowSuccessAlert] = useState<boolean>(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -107,7 +112,6 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
     const createNewSession = async () => {
       try {
         const session = await sessionApi.createSession(
-          undefined, // No user ID for now
           `Interview Session - ${new Date().toLocaleString()}`
         );
         setSessionId(session.id);
@@ -147,15 +151,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
     if (sessionId && emotionData) {
       const trackEmotionData = async () => {
         try {
-          await sessionApi.addEmotionSnapshot(sessionId, {
-            attention_level: emotionData.attention_level,
-            positivity_level: emotionData.positivity_level,
-            arousal_level: emotionData.arousal_level,
-            dominant_emotion: emotionData.dominant_emotion,
-            face_detected: true,
-            question_id: question?.id
-          });
-          console.log('Emotion data tracked in session');
+          // Store emotion data in state instead of sending to backend
+          console.log('Emotion data tracked:', emotionData);
         } catch (error) {
           console.error('Failed to track emotion data:', error);
         }
@@ -172,7 +169,8 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
         try {
           const sessionQuestion = await sessionApi.addQuestionToSession(
             sessionId,
-            question.id
+            question.id,
+            0 // Default order index
           );
           setSessionQuestionId(sessionQuestion.id);
           console.log('Added question to session:', sessionQuestion);
@@ -345,39 +343,93 @@ function solution(input) {
       return;
     }
     
+    // Prevent multiple submissions in quick succession
+    if (isLoading) {
+      console.log("Test already in progress, ignoring request");
+      return;
+    }
+    
     console.log(`Running test for question ID ${question.id} with language ${currentLanguage}`);
     setIsLoading(true);
     setShowResult(false);
     
     try {
-      // Submit code for testing but don't record it as a final submission
-      const testResult = await questionApi.testCode(question.id, codeToRun, currentLanguage);
-      console.log("Received test results:", testResult);
-      
-      // Format results for display
-      const passedCount = testResult.passed_test_cases;
-      const totalCount = testResult.total_test_cases;
-      const passRate = (passedCount / totalCount) * 100;
-      
-      let resultText = `Test Results: ${passedCount}/${totalCount} tests passed (${passRate.toFixed(1)}%)\n\n`;
-      resultText += `Feedback: ${testResult.feedback}\n`;
-      resultText += `Time Complexity: ${testResult.time_complexity}\n`;
-      resultText += `Space Complexity: ${testResult.space_complexity}\n\n`;
-      
-      // Add details for each test case
-      testResult.results.forEach((result, index) => {
-        resultText += `Test Case ${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
-        resultText += `Input: ${result.test_case.input}\n`;
-        resultText += `Expected Output: ${result.test_case.output}\n`;
-        resultText += `Actual Output: ${result.actual_output}\n`;
-        if (result.error_message) {
-          resultText += `Error: ${result.error_message}\n`;
+      // Get the first test case for direct execution
+      if (question.test_cases && question.test_cases.length > 0) {
+        const testCase = question.test_cases[0];
+        
+        console.log("Executing code with Judge0 API");
+        const judge0Result = await judge0Service.executeCode(
+          codeToRun,
+          currentLanguage,
+          testCase.input
+        );
+        
+        console.log("Judge0 execution result:", judge0Result);
+        
+        // Format the result for display
+        let resultText = '';
+        
+        if (judge0Result.status.id === JUDGE0_STATUS.ACCEPTED) {
+          const actualOutput = judge0Result.stdout?.trim() || "";
+          const expectedOutput = testCase.output.trim();
+          
+          // Normalize outputs for comparison
+          const normalizeOutput = (output: string) => {
+            // Remove "Output:" prefix if present
+            let normalized = output.replace(/^Output:\s*/, '');
+            // Remove any extra whitespace
+            normalized = normalized.trim();
+            
+            // Check if the output is an array/list format
+            if (normalized.startsWith('[') && normalized.endsWith(']')) {
+              // For array/list outputs, only normalize spaces between elements
+              normalized = normalized.replace(/\s*,\s*/g, ', ');
+            } else {
+              // For non-array outputs, just trim whitespace
+              normalized = normalized.trim();
+            }
+            
+            return normalized;
+          };
+          
+          const normalizedActual = normalizeOutput(actualOutput);
+          const normalizedExpected = normalizeOutput(expectedOutput);
+          
+          console.log("Normalized actual output:", normalizedActual);
+          console.log("Normalized expected output:", normalizedExpected);
+          
+          const passed = normalizedActual === normalizedExpected;
+          
+          resultText = `Direct Execution Result:\n`;
+          resultText += `Input: ${testCase.input}\n`;
+          resultText += `Expected Output: ${expectedOutput}\n`;
+          resultText += `Actual Output: ${actualOutput}\n`;
+          resultText += `Status: ${passed ? 'PASSED' : 'FAILED'}\n`;
+          resultText += `Execution Time: ${judge0Result.time || 0}ms\n`;
+          
+          if (judge0Result.stderr) {
+            resultText += `\nError Output:\n${judge0Result.stderr}\n`;
+          }
+        } else {
+          resultText = `Execution Error:\n`;
+          resultText += `Status: ${judge0Result.status.description}\n`;
+          
+          if (judge0Result.stderr) {
+            resultText += `\nError Output:\n${judge0Result.stderr}\n`;
+          }
+          
+          if (judge0Result.compile_output) {
+            resultText += `\nCompilation Output:\n${judge0Result.compile_output}\n`;
+          }
         }
-        resultText += `Time: ${result.execution_time.toFixed(2)}ms\n\n`;
-      });
-      
-      setResult(resultText);
-      setShowResult(true);
+        
+        setResult(resultText);
+        setShowResult(true);
+      } else {
+        setResult("No test cases available for this question.");
+        setShowResult(true);
+      }
     } catch (error) {
       console.error('Error testing code:', error);
       setResult(`Error testing code: ${error}`);
@@ -395,66 +447,124 @@ function solution(input) {
       return;
     }
     
+    // Prevent multiple submissions in quick succession
+    if (isLoading) {
+      console.log("Submission already in progress, ignoring request");
+      return;
+    }
+    
     console.log(`Submitting solution for question ID ${question.id} with language ${currentLanguage}`);
     setIsLoading(true);
     setShowResult(false);
+    setShowSuccessAlert(false);
     
     try {
-      // Submit code for testing
-      const testResult = await questionApi.testCode(question.id, codeToSubmit, currentLanguage);
-      console.log("Received submission results:", testResult);
-      setTestResults(testResult);
-      
-      // Format results for display
-      const passedCount = testResult.passed_test_cases;
-      const totalCount = testResult.total_test_cases;
-      const passRate = (passedCount / totalCount) * 100;
-      
-      let resultText = `Test Results: ${passedCount}/${totalCount} tests passed (${passRate.toFixed(1)}%)\n\n`;
-      resultText += `Feedback: ${testResult.feedback}\n`;
-      resultText += `Time Complexity: ${testResult.time_complexity}\n`;
-      resultText += `Space Complexity: ${testResult.space_complexity}\n\n`;
-      
-      // Add details for each test case
-      testResult.results.forEach((result, index) => {
-        resultText += `Test Case ${index + 1}: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
-        resultText += `Input: ${result.test_case.input}\n`;
-        resultText += `Expected Output: ${result.test_case.output}\n`;
-        resultText += `Actual Output: ${result.actual_output}\n`;
-        if (result.error_message) {
-          resultText += `Error: ${result.error_message}\n`;
+      // Run all test cases in batch
+      if (question.test_cases && question.test_cases.length > 0) {
+        console.log(`Batch testing code with ${question.test_cases.length} test cases`);
+        
+        // Get the session question ID if available
+        let sessionQuestionId = null;
+        if (sessionId) {
+          try {
+            const sessionQuestions = await sessionApi.getSessionQuestions(sessionId);
+            const currentSessionQuestion = sessionQuestions.find(
+              (sq: any) => sq.question_id === question.id
+            );
+            if (currentSessionQuestion) {
+              sessionQuestionId = currentSessionQuestion.id;
+              console.log(`Found session question ID: ${sessionQuestionId}`);
+            }
+          } catch (error) {
+            console.error("Error getting session questions:", error);
+          }
         }
-        resultText += `Time: ${result.execution_time.toFixed(2)}ms\n\n`;
-      });
-      
-      setResult(resultText);
-      setShowResult(true);
-      setShowNextButton(true);
-      
-      // Store test results in session if available
-      if (sessionId && sessionQuestionId && question) {
-        try {
-          await sessionApi.updateSessionQuestion(sessionId, question.id, {
-            code_submitted: codeToSubmit,
-            language: currentLanguage,
-            passed_tests: testResult.passed_test_cases,
-            total_tests: testResult.total_test_cases,
-            test_results: testResult,
-            end_time: new Date().toISOString(),
-            duration: 45 * 60 - timeLeft // Calculate time spent
-          });
-          console.log('Updated session with code submission results');
+        
+        let retryCount = 0;
+        const maxRetries = 3;
+        let testResult = null;
+        
+        while (retryCount < maxRetries) {
+          try {
+            // Use the batch test API
+            testResult = await questionApi.batchTestCode(
+              question.id,
+              codeToSubmit,
+              currentLanguage,
+              sessionQuestionId || undefined
+            );
+            break; // Success, exit the retry loop
+          } catch (error: any) {
+            if (error.response?.status === 429 && retryCount < maxRetries - 1) {
+              // Rate limited, wait and retry with exponential backoff
+              const delay = 1000 * Math.pow(2, retryCount); // Exponential backoff
+              console.log(`Rate limited, retrying in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              retryCount++;
+            } else {
+              throw error; // Re-throw if not rate limited or out of retries
+            }
+          }
+        }
+        
+        if (!testResult) {
+          throw new Error("Failed to execute code after retries");
+        }
+        
+        console.log("Batch test results:", testResult);
+        
+        // Check if all tests passed
+        if (testResult.passed_test_cases === testResult.total_test_cases) {
+          setShowSuccessAlert(true);
+        }
+        
+        // Format results for display
+        let resultText = `Test Results:\n`;
+        resultText += `Passed: ${testResult.passed_test_cases}/${testResult.total_test_cases} (${testResult.pass_rate.toFixed(1)}%)\n`;
+        resultText += `Total Execution Time: ${typeof testResult.total_execution_time === 'number' ? testResult.total_execution_time.toFixed(2) : '0.00'}ms\n\n`;
+        
+        // Add detailed results for each test case
+        testResult.results.forEach((result, index) => {
+          resultText += `Test Case ${index + 1}:\n`;
+          resultText += `Input: ${result.test_case.input}\n`;
+          resultText += `Expected Output: ${result.test_case.output}\n`;
+          resultText += `Actual Output: ${result.actual_output}\n`;
+          resultText += `Status: ${result.passed ? 'PASSED' : 'FAILED'}\n`;
+          resultText += `Execution Time: ${result.execution_time}ms\n`;
           
-          // Don't automatically complete the session or redirect
-          // Let the user choose to go to the next question or end the interview
-        } catch (error) {
-          console.error('Failed to update session with code results:', error);
+          if (result.error_message) {
+            resultText += `Error: ${result.error_message}\n`;
+          }
+          
+          resultText += '\n';
+        });
+        
+        setResult(resultText);
+        setShowResult(true);
+        
+        // Update session with test results if available
+        if (sessionId) {
+          try {
+            await sessionApi.updateSessionQuestion(sessionId, question.id, {
+              code_submitted: codeToSubmit,
+              language: currentLanguage,
+              passed_tests: testResult.passed_test_cases,
+              total_tests: testResult.total_test_cases,
+              test_results: testResult
+            });
+            
+            console.log("Session updated with test results");
+          } catch (error) {
+            console.error("Error updating session with test results:", error);
+          }
         }
+      } else {
+        setResult("No test cases available for this question.");
+        setShowResult(true);
       }
-      
     } catch (error) {
-      console.error('Error testing code:', error);
-      setResult(`Error testing code: ${error}`);
+      console.error('Error submitting code:', error);
+      setResult(`Error submitting code: ${error}`);
       setShowResult(true);
     } finally {
       setIsLoading(false);
@@ -477,7 +587,11 @@ function solution(input) {
       // Create a new session question if we have a session
       if (sessionId && question) {
         try {
-          const response = await sessionApi.addQuestionToSession(sessionId, question.id);
+          const response = await sessionApi.addQuestionToSession(
+            sessionId, 
+            question.id,
+            0 // Default order index
+          );
           setSessionQuestionId(response.id);
           console.log('Added new question to session:', response);
         } catch (error) {
@@ -581,7 +695,11 @@ function solution(input) {
       // Create a new session question if we have a session
       if (sessionId && question) {
         try {
-          const response = await sessionApi.addQuestionToSession(sessionId, question.id);
+          const response = await sessionApi.addQuestionToSession(
+            sessionId, 
+            question.id,
+            0 // Default order index
+          );
           setSessionQuestionId(response.id);
           console.log('Added new question to session:', response);
         } catch (error) {
@@ -875,8 +993,10 @@ function solution(input) {
               
               <Box sx={{ flex: 1, mb: 2 }}>
                 <CodeEditor
-                  initialCode={initialCode}
-                  questionTitle={question?.title || "Coding Question"}
+                  value={currentCode}
+                  onChange={setCurrentCode}
+                  language={currentLanguage as SupportedLanguage}
+                  onLanguageChange={(language) => setCurrentLanguage(language)}
                   onRun={(code, language) => {
                     console.log("Running code with language:", language);
                     setCurrentLanguage(language);
@@ -887,7 +1007,11 @@ function solution(input) {
                     setCurrentLanguage(language);
                     handleSubmit(code);
                   }}
-                  textareaRef={textareaRef}
+                  question={question ? {
+                    id: question.id.toString(),
+                    title: question.title,
+                    test_cases: question.test_cases
+                  } : undefined}
                 />
               </Box>
               
@@ -928,6 +1052,19 @@ function solution(input) {
                   {/* Test Results Section */}
                   {showResult ? (
                     <Box>
+                      {showSuccessAlert && (
+                        <Alert 
+                          severity="success" 
+                          sx={{ mb: 2 }}
+                          action={
+                            <Button color="inherit" size="small" onClick={() => setShowSuccessAlert(false)}>
+                              DISMISS
+                            </Button>
+                          }
+                        >
+                          Congratulations! All test cases passed successfully! 🎉
+                        </Alert>
+                      )}
                       <Typography 
                         variant="body1" 
                         component="pre" 
