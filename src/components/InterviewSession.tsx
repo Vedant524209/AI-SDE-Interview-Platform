@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Box, Container, Typography, Paper, Divider, Chip, Button, CircularProgress, Accordion, AccordionSummary, AccordionDetails, Alert } from '@mui/material';
+import { Box, Container, Typography, Paper, Divider, Chip, Button, CircularProgress, Accordion, AccordionSummary, AccordionDetails, Alert, List, ListItem, ListItemIcon, ListItemText, Tooltip } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import TimerIcon from '@mui/icons-material/Timer';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -9,6 +9,9 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EmotionAnalysis from './EmotionAnalysis';
 import { questionApi, Question, TestCase, Example, sessionApi, TestResult } from '../services/api';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
+import CircleIcon from '@mui/icons-material/Circle';
 
 interface InterviewSessionProps {
   onLogout: () => void;
@@ -87,6 +90,15 @@ const InterviewSession: React.FC<InterviewSessionProps> = ({ onLogout }) => {
   const [testResults, setTestResults] = useState<TestResult | null>(null);
   const [isRedirecting, setIsRedirecting] = useState<boolean>(false);
   const [showNextButton, setShowNextButton] = useState<boolean>(false);
+  const [completedQuestions, setCompletedQuestions] = useState<Array<{
+    question: any,
+    code: string,
+    language: string,
+    testResults: any,
+    submissionTime: string
+  }>>([]);
+  const [activeQuestion, setActiveQuestion] = useState<number>(0);
+  const [isNewInterviewStarted, setIsNewInterviewStarted] = useState<boolean>(false);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -540,6 +552,97 @@ function solution(input) {
     }
   };
 
+  const handleStartNewInterview = async () => {
+    if (question && currentCode) {
+      // Save current question to completed questions
+      setCompletedQuestions(prev => [...prev, {
+        question: question,
+        code: currentCode,
+        language: currentLanguage,
+        testResults: testResults,
+        submissionTime: new Date().toISOString()
+      }]);
+    }
+    
+    // Reset states for new question
+    setCurrentCode('');
+    setShowResult(false);
+    setIsLoading(true);
+    setShowNextButton(false);
+    setTestResults(null);
+    setFetchingQuestion(true);
+    setActiveQuestion(completedQuestions.length + 1);
+    setIsNewInterviewStarted(true);
+    
+    // Generate a new question
+    try {
+      await fetchNewQuestion();
+      
+      // Create a new session question if we have a session
+      if (sessionId && question) {
+        try {
+          const response = await sessionApi.addQuestionToSession(sessionId, question.id);
+          setSessionQuestionId(response.id);
+          console.log('Added new question to session:', response);
+        } catch (error) {
+          console.error('Failed to add question to session:', error);
+        }
+      }
+    } catch (error) {
+      console.error('Error getting next question:', error);
+    } finally {
+      setIsLoading(false);
+      setFetchingQuestion(false);
+    }
+  };
+
+  // Render the completed questions panel if there are any completed questions
+  const renderCompletedQuestions = () => {
+    if (completedQuestions.length === 0) return null;
+    
+    return (
+      <Box sx={{ 
+        width: '300px', 
+        borderLeft: '1px solid #e0e0e0',
+        padding: 2,
+        display: { xs: 'none', md: 'block' }, // Hide on small screens
+        overflow: 'auto'
+      }}>
+        <Typography variant="h6" gutterBottom fontWeight="bold">
+          Previous Questions
+        </Typography>
+        
+        {completedQuestions.map((item, index) => (
+          <Paper key={index} sx={{ p: 2, mb: 2, backgroundColor: '#f5f5f5' }}>
+            <Typography variant="subtitle1" fontWeight="bold">
+              {index + 1}. {item.question.title}
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, mb: 1, mt: 1, flexWrap: 'wrap' }}>
+              <Chip 
+                label={item.question.difficulty?.toUpperCase()} 
+                size="small"
+                color={
+                  item.question.difficulty === 'easy' ? 'success' : 
+                  item.question.difficulty === 'medium' ? 'warning' : 'error'
+                } 
+              />
+              {item.testResults && (
+                <Chip 
+                  label={`${item.testResults.passed_test_cases}/${item.testResults.total_test_cases} Tests`}
+                  size="small"
+                  color={item.testResults.passed ? 'success' : 'error'}
+                />
+              )}
+            </Box>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Submitted: {new Date(item.submissionTime).toLocaleTimeString()}
+            </Typography>
+          </Paper>
+        ))}
+      </Box>
+    );
+  };
+
   // Show loading spinner while fetching question
   if (fetchingQuestion) {
     return (
@@ -567,16 +670,32 @@ function solution(input) {
         padding: 2,
         borderBottom: '1px solid #e0e0e0'
       }}>
-        <Button 
-          variant="contained" 
-          color="error"
-          startIcon={<ArrowBackIcon />} 
-          onClick={handleEndInterview}
-        >
-          End Interview
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button 
+            variant="contained" 
+            color="error"
+            startIcon={<ArrowBackIcon />} 
+            onClick={handleEndInterview}
+          >
+            End Interview
+          </Button>
+          
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddCircleOutlineIcon />}
+            onClick={handleStartNewInterview}
+          >
+            Start New Question
+          </Button>
+        </Box>
         
         <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {activeQuestion > 0 && (
+            <Typography variant="subtitle1" sx={{ mr: 2 }}>
+              Question {activeQuestion + 1}
+            </Typography>
+          )}
           <TimerIcon sx={{ mr: 1, color: timeLeft < 300 ? 'error.main' : 'inherit' }} />
           <Typography 
             variant="h6" 
@@ -599,17 +718,20 @@ function solution(input) {
         <Box sx={{ 
           display: 'flex', 
           flex: 1, 
-          padding: 2, 
           gap: 2, 
           height: 'calc(100vh - 130px)', 
           overflow: 'hidden'
         }}>
           {/* Left column: Question details */}
           <Box sx={{ 
-            width: '25%', 
+            width: { 
+              xs: '100%', 
+              md: isNewInterviewStarted ? '20%' : '30%' 
+            },
             display: 'flex', 
             flexDirection: 'column', 
-            overflow: 'auto'
+            overflow: 'auto',
+            padding: 2
           }}>
             <Paper sx={{ p: 2, mb: 2 }}>
               <Typography variant="h5" gutterBottom>{question?.title}</Typography>
@@ -652,74 +774,55 @@ function solution(input) {
                 )}
               </Box>
               
-              <Divider sx={{ my: 2 }} />
-              
               <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
                 Constraints:
               </Typography>
               
-              <ul style={{ paddingLeft: '20px', marginTop: 0 }}>
+              <List dense sx={{ mb: 2 }}>
                 {question?.constraints?.map((constraint, index) => (
-                  <li key={index}>
-                    <Typography variant="body2">{constraint}</Typography>
-                  </li>
+                  <ListItem key={index} sx={{ py: 0.5 }}>
+                    <ListItemIcon sx={{ minWidth: '30px' }}>
+                      <CircleIcon sx={{ fontSize: 8 }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                      primary={constraint} 
+                      primaryTypographyProps={{ 
+                        variant: 'body2', 
+                        sx: { whiteSpace: 'pre-wrap' } 
+                      }} 
+                    />
+                  </ListItem>
                 ))}
-              </ul>
-              
-              <Divider sx={{ my: 2 }} />
-              
-              <Accordion>
-                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="subtitle1" fontWeight="bold">Test Cases</Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  {question?.test_cases?.map((testCase, index) => (
-                    <Box key={index} sx={{ mb: 2, backgroundColor: '#f5f5f5', p: 1.5, borderRadius: 1 }}>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                        <b>Input:</b> {testCase.input}
-                      </Typography>
-                      <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                        <b>Output:</b> {testCase.output}
-                      </Typography>
-                      {testCase.explanation && (
-                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                          <b>Explanation:</b> {testCase.explanation}
-                        </Typography>
-                      )}
-                    </Box>
-                  ))}
-                </AccordionDetails>
-              </Accordion>
+              </List>
             </Paper>
           </Box>
           
-          {/* Middle column: Code Editor */}
+          {/* Middle section: Code editor and test results */}
           <Box sx={{ 
-            width: '50%',
+            width: { 
+              xs: '100%', 
+              md: isNewInterviewStarted ? '45%' : '45%' 
+            },
             display: 'flex', 
-            flexDirection: 'column',
-            height: '100%'
+            flexDirection: 'column', 
+            overflow: 'auto',
+            padding: 2
           }}>
             <Paper sx={{ p: 2, mb: 2, flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <Box sx={{ 
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                justifyContent: 'space-between', 
-                alignItems: { xs: 'flex-start', sm: 'center' },
-                mb: 2,
-                gap: 2
-              }}>
-                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mb: { xs: 1, sm: 0 } }}>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6" gutterBottom fontWeight="bold">
                   Your Solution
                 </Typography>
+                
                 <Box sx={{ 
                   display: 'flex', 
-                  flexDirection: { xs: 'column', sm: 'row' },
+                  justifyContent: 'space-between', 
                   alignItems: 'center', 
-                  gap: 2,
-                  width: { xs: '100%', sm: 'auto' }
+                  flexWrap: 'wrap',
+                  gap: 1,
+                  mb: 2
                 }}>
-                  <Box sx={{ display: 'flex', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
                     <Button 
                       variant="outlined"
                       onClick={handleRunButton}
@@ -727,11 +830,12 @@ function solution(input) {
                       startIcon={<PlayArrowIcon />}
                       sx={{ 
                         borderRadius: 2,
-                        flexGrow: { xs: 1, sm: 0 }
+                        flexGrow: { xs: 1, sm: 0 }  
                       }}
                     >
                       Run Tests
                     </Button>
+                    
                     <Button 
                       variant="contained" 
                       color="primary"
@@ -739,7 +843,7 @@ function solution(input) {
                       disabled={isLoading || !question}
                       sx={{ 
                         borderRadius: 2,
-                        flexGrow: { xs: 1, sm: 0 }
+                        flexGrow: { xs: 1, sm: 0 } 
                       }}
                     >
                       Submit Solution
@@ -747,21 +851,29 @@ function solution(input) {
                   </Box>
                   
                   <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'column', 
-                    alignItems: { xs: 'flex-start', sm: 'flex-end' },
-                    mt: { xs: 1, sm: 0 }
+                    display: { xs: 'none', sm: 'flex' },
+                    alignItems: 'center',
+                    color: 'text.secondary',
+                    fontSize: '0.875rem'
                   }}>
-                    <Typography variant="caption" color="text.secondary">
-                      <b>Run Tests:</b> Ctrl+Enter
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      <b>Submit:</b> Ctrl+Shift+Enter
-                    </Typography>
+                    <Tooltip title="Run your code and see if it passes the test cases">
+                      <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
+                        <KeyboardIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        <span>Ctrl+Enter: Run Tests</span>
+                      </Box>
+                    </Tooltip>
+                    
+                    <Tooltip title="Submit your final solution">
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <KeyboardIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        <span>Ctrl+Shift+Enter: Submit</span>
+                      </Box>
+                    </Tooltip>
                   </Box>
                 </Box>
               </Box>
-              <Box sx={{ flex: 1, minHeight: 0 }}>
+              
+              <Box sx={{ flex: 1, mb: 2 }}>
                 <CodeEditor
                   initialCode={initialCode}
                   questionTitle={question?.title || "Coding Question"}
@@ -778,152 +890,95 @@ function solution(input) {
                   textareaRef={textareaRef}
                 />
               </Box>
-            </Paper>
-            
-            <Paper sx={{ p: 2 }}>
-              <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h6" fontWeight="bold">Test Results</Typography>
-                <Box display="flex" gap={1}>
-                  {showNextButton && (
-                    <Button 
-                      variant="contained" 
-                      color="primary" 
-                      onClick={handleNextQuestion}
-                      sx={{ mr: 2 }}
-                    >
-                      Next Question
-                    </Button>
-                  )}
-                  {sessionId && (
-                    <Button 
-                      variant="outlined" 
-                      color="error" 
-                      onClick={handleEndInterview}
-                    >
-                      End Interview
-                    </Button>
-                  )}
-                </Box>
-              </Box>
               
-              {showResult ? (
-                <Box sx={{ 
-                  backgroundColor: '#f5f5f5', 
-                  p: 2, 
-                  borderRadius: 2, 
-                  maxHeight: '300px', 
-                  overflow: 'auto',
-                  border: '1px solid #e0e0e0'
-                }}>
-                  {isRedirecting && (
-                    <Alert severity="success" sx={{ mb: 2 }}>
-                      Your solution has been submitted! Redirecting to session report in a few seconds...
-                    </Alert>
-                  )}
-                  
-                  {testResults && (
-                    <>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="h6">
-                          Result: {testResults.passed ? 'Passed' : 'Failed'}
-                        </Typography>
-                        <Typography variant="h6" color={testResults.passed ? 'success.main' : 'error.main'}>
-                          {testResults.passed_test_cases}/{testResults.total_test_cases} Tests Passed
-                        </Typography>
-                      </Box>
-                      
-                      <Box sx={{ mb: 2 }}>
-                        <Typography variant="subtitle1" fontWeight="bold">Feedback:</Typography>
-                        <Typography variant="body2">{testResults.feedback}</Typography>
-                      </Box>
-                      
-                      <Box sx={{ display: 'flex', gap: 3, mb: 2 }}>
-                        <Box>
-                          <Typography variant="subtitle2" fontWeight="bold">Time Complexity:</Typography>
-                          <Typography variant="body2">{testResults.time_complexity}</Typography>
-                        </Box>
-                        <Box>
-                          <Typography variant="subtitle2" fontWeight="bold">Space Complexity:</Typography>
-                          <Typography variant="body2">{testResults.space_complexity}</Typography>
-                        </Box>
-                      </Box>
-                      
-                      <Divider sx={{ my: 2 }} />
-                      
-                      <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Test Case Results:</Typography>
-                      
-                      {testResults.results.map((result, index) => (
-                        <Box 
-                          key={index} 
-                          sx={{ 
-                            mb: 2, 
-                            p: 1.5, 
-                            borderRadius: 1, 
-                            border: 1,
-                            borderColor: result.passed ? 'success.light' : 'error.light',
-                            backgroundColor: result.passed ? 'rgba(76, 175, 80, 0.08)' : 'rgba(239, 83, 80, 0.08)'
-                          }}
+              <Box sx={{ mt: 2 }}>
+                <Paper sx={{ p: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" fontWeight="bold">Test Results</Typography>
+                    <Box>
+                      {showNextButton && (
+                        <Button 
+                          variant="contained" 
+                          color="primary" 
+                          onClick={handleNextQuestion}
+                          sx={{ mr: 2 }}
                         >
-                          <Typography fontWeight="bold" color={result.passed ? 'success.main' : 'error.main'}>
-                            Test Case {index + 1}: {result.passed ? 'PASSED' : 'FAILED'}
-                          </Typography>
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', my: 0.5 }}>
-                            <b>Input:</b> {result.test_case.input}
-                          </Typography>
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', my: 0.5 }}>
-                            <b>Expected Output:</b> {result.test_case.output}
-                          </Typography>
-                          <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', my: 0.5 }}>
-                            <b>Actual Output:</b> {result.actual_output}
-                          </Typography>
-                          {result.error_message && (
-                            <Typography variant="body2" color="error" sx={{ whiteSpace: 'pre-wrap', my: 0.5 }}>
-                              <b>Error:</b> {result.error_message}
-                            </Typography>
-                          )}
-                          <Typography variant="body2" sx={{ mt: 0.5 }}>
-                            <b>Execution Time:</b> {result.execution_time.toFixed(2)}ms
-                          </Typography>
-                        </Box>
-                      ))}
-                    </>
-                  )}
+                          Next Question
+                        </Button>
+                      )}
+                      {sessionId && (
+                        <Button 
+                          variant="outlined" 
+                          color="error" 
+                          onClick={handleEndInterview}
+                        >
+                          End Interview
+                        </Button>
+                      )}
+                    </Box>
+                  </Box>
                   
-                  {!testResults && result && (
-                    <Alert severity="error" sx={{ whiteSpace: 'pre-wrap' }}>
-                      {result}
+                  {/* Redirecting alert */}
+                  {isRedirecting && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Redirecting to interview report...
                     </Alert>
                   )}
-                </Box>
-              ) : (
-                <Box sx={{ 
-                  p: 4, 
-                  textAlign: 'center', 
-                  color: 'text.secondary',
-                  backgroundColor: '#f9f9f9',
-                  borderRadius: 2,
-                  border: '1px dashed #e0e0e0'
-                }}>
-                  <Typography variant="body1">
-                    Run your code to see test results here
-                  </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                    Click "Run Tests" or press Ctrl+Enter
-                  </Typography>
-                </Box>
-              )}
+                  
+                  {/* Test Results Section */}
+                  {showResult ? (
+                    <Box>
+                      <Typography 
+                        variant="body1" 
+                        component="pre" 
+                        sx={{ 
+                          whiteSpace: 'pre-wrap', 
+                          backgroundColor: '#f5f5f5', 
+                          p: 2, 
+                          borderRadius: 1,
+                          fontFamily: 'monospace'
+                        }}
+                      >
+                        {result}
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Box 
+                      sx={{ 
+                        p: 3, 
+                        textAlign: 'center', 
+                        backgroundColor: '#f5f5f5', 
+                        borderRadius: 1 
+                      }}
+                    >
+                      <Typography color="text.secondary">
+                        Run your code to see test results
+                      </Typography>
+                    </Box>
+                  )}
+                </Paper>
+              </Box>
             </Paper>
           </Box>
           
-          {/* Right column: Emotion Analysis */}
-          <Box sx={{ width: '25%', height: '100%' }}>
-            <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
-              <Typography variant="h6" gutterBottom>Emotion Analysis</Typography>
-              <Box sx={{ flex: 1 }}>
-                <EmotionAnalysis onEmotionUpdate={handleEmotionUpdate} />
-              </Box>
-            </Paper>
-          </Box>
+          {!isNewInterviewStarted ? (
+            /* Right column: Emotion Analysis (shown only when no new interview is started) */
+            <Box sx={{ 
+              width: { xs: '100%', md: '25%' }, 
+              height: '100%',
+              padding: 2
+            }}>
+              <Paper sx={{ p: 2, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>Emotion Analysis</Typography>
+                <Box sx={{ flex: 1 }}>
+                  <EmotionAnalysis onEmotionUpdate={handleEmotionUpdate} />
+                </Box>
+              </Paper>
+            </Box>
+          ) : (
+            /* Completed questions panel - only shown when new interview is started */
+            renderCompletedQuestions()
+          )}
         </Box>
       )}
     </Box>
